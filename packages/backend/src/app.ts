@@ -15,7 +15,14 @@ const app = express()
 // Behind nginx reverse proxy — trust the first hop for X-Forwarded-* headers.
 app.set('trust proxy', 1)
 
-app.use(helmet())
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      // Allow WebAssembly for client-side PDF generation (pdf-lib/@react-pdf).
+      scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
+    },
+  },
+}))
 app.use(cors({
   origin: (origin, cb) => {
     // Allow same-origin (no Origin header), native mobile, and the configured frontend.
