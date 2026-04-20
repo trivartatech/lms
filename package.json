@@ -16,6 +16,10 @@
     "db:seed": "npm run db:seed --workspace=packages/backend",
     "db:studio": "npm run db:studio --workspace=packages/backend"
   },
+  "overrides": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0"
+  },
   "optionalDependencies": {
     "@babel/compat-data": "^7.29.0",
     "@babel/core": "^7.29.0",
