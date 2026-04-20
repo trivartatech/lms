@@ -12,6 +12,9 @@ import { errorHandler } from './middleware/error.middleware'
 
 const app = express()
 
+// Behind nginx reverse proxy — trust the first hop for X-Forwarded-* headers.
+app.set('trust proxy', 1)
+
 app.use(helmet())
 app.use(cors({
   origin: (origin, cb) => {
