@@ -72,11 +72,19 @@ export const authService = {
   },
 
   /**
-   * Refresh flow with rotation:
+   * Refresh flow — WITHOUT rotation:
    *   1. Verify JWT signature + expiry
    *   2. Look up the token row by its sha256 hash
-   *   3. If missing/revoked → reuse detected → revoke entire user token family
-   *   4. Else revoke the used token, issue a new access + refresh pair
+   *   3. If missing/revoked → 401 (but DO NOT revoke the whole family — a
+   *      genuine network race during rotation could otherwise kick users
+   *      out permanently on mobile where AsyncStorage writes aren't atomic)
+   *   4. Else issue a fresh access token and return the SAME refresh token
+   *
+   * Rotation was removed because mobile clients (RN + AsyncStorage) can't
+   * guarantee the rotated token is persisted before the app is killed,
+   * leading to a next-launch "reuse detected" cascade that wipes the whole
+   * session. With no rotation, the refresh token stays stable until its DB
+   * expiry (30 days) or explicit logout.
    */
   async refreshAccessToken(refreshToken: string) {
     let payload: { id: number; email: string; role: string }
@@ -89,33 +97,21 @@ export const authService = {
     const tokenHash = hashToken(refreshToken)
     const existing  = await prisma.refreshToken.findUnique({ where: { tokenHash } })
 
-    // Reuse / theft detection — token is valid JWT but either unknown to us or already revoked.
     if (!existing || existing.revokedAt) {
-      await prisma.refreshToken.updateMany({
-        where: { userId: payload.id, revokedAt: null },
-        data:  { revokedAt: new Date() },
-      })
-      throw new AppError(401, 'Refresh token reuse detected — session terminated')
+      throw new AppError(401, 'Refresh token not recognized')
     }
 
     if (existing.expiresAt.getTime() < Date.now()) {
       throw new AppError(401, 'Refresh token expired')
     }
 
-    // Rotate: revoke old, issue new pair
     const user = await prisma.user.findUnique({ where: { id: payload.id } })
     if (!user) throw new AppError(401, 'User not found')
 
-    const { refreshToken: newRefresh, rowId: newRowId } = await issueRefreshToken(user.id, {
-      id: user.id, email: user.email, role: user.role,
-    })
-    await prisma.refreshToken.update({
-      where: { id: existing.id },
-      data:  { revokedAt: new Date(), replacedById: newRowId },
-    })
-
     const accessToken = signAccess({ id: user.id, email: user.email, role: user.role })
-    return { accessToken, refreshToken: newRefresh }
+    // Return the same refresh token — the client should keep using it until
+    // it expires or the user logs out.
+    return { accessToken, refreshToken }
   },
 
   /** Revoke the given refresh token (logout). */
