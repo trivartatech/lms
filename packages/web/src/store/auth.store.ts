@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { UserSummary } from '@lms/shared'
 
 interface AuthState {
@@ -10,18 +9,14 @@ interface AuthState {
   logout: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      user: null,
-      setAuth: (accessToken, user) => set({ accessToken, user }),
-      setAccessToken: (accessToken) => set({ accessToken }),
-      logout: () => set({ accessToken: null, user: null }),
-    }),
-    {
-      name: 'lms-auth',
-      partialize: (state) => ({ user: state.user }),
-    },
-  ),
-)
+// In-memory only — state is intentionally lost on page refresh so the user
+// must re-authenticate. Multi-device login is supported server-side (see
+// auth.service.ts#login — new refresh tokens are issued without revoking
+// existing ones for the same user).
+export const useAuthStore = create<AuthState>()((set) => ({
+  accessToken: null,
+  user: null,
+  setAuth: (accessToken, user) => set({ accessToken, user }),
+  setAccessToken: (accessToken) => set({ accessToken }),
+  logout: () => set({ accessToken: null, user: null }),
+}))

@@ -1,6 +1,5 @@
 import axios from 'axios'
 import Constants from 'expo-constants'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAuthStore } from '../store/auth.store'
 
 const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl ?? 'http://localhost:3001/api'
@@ -22,7 +21,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true
       try {
-        const refreshToken = await AsyncStorage.getItem('refreshToken')
+        // In-memory refresh token — lives only for the current app session.
+        const refreshToken = useAuthStore.getState().refreshToken
         if (!refreshToken) throw new Error('No refresh token')
         const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {}, {
           headers: { Cookie: `refreshToken=${refreshToken}` },
@@ -32,7 +32,6 @@ api.interceptors.response.use(
         return api(original)
       } catch {
         useAuthStore.getState().logout()
-        await AsyncStorage.removeItem('refreshToken')
       }
     }
     return Promise.reject(error)

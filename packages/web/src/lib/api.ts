@@ -17,16 +17,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    const original = error.config
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true
-      try {
-        const { data } = await axios.post('/api/auth/refresh', {}, { withCredentials: true })
-        useAuthStore.getState().setAccessToken(data.accessToken)
-        original.headers.Authorization = `Bearer ${data.accessToken}`
-        return api(original)
-      } catch {
-        useAuthStore.getState().logout()
+    // Any 401 during an active session ends the session — the user must
+    // re-authenticate. Silent refresh is disabled on web so that a page
+    // reload always drops the user back to /login.
+    if (error.response?.status === 401) {
+      useAuthStore.getState().logout()
+      if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
     }

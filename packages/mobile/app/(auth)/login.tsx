@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -58,8 +57,9 @@ export default function LoginScreen() {
         email: values.email,
         password: values.password,
       })
-      await AsyncStorage.setItem('refreshToken', data.refreshToken ?? '')
-      setAuth(data.accessToken, data.user)
+      // Session is in-memory only — no refresh token is persisted, so closing
+      // the app logs the user out. Multi-device login is supported server-side.
+      setAuth(data.accessToken, data.refreshToken ?? '', data.user)
     } catch (err: any) {
       console.log('[LOGIN ERROR]', {
         url: err?.config?.baseURL,

@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuthStore } from '../src/store/auth.store'
-import { api } from '../src/lib/api'
 import { hydrateCache, startCachePersister } from '../src/lib/offline-cache'
 import { syncPushTokenWithBackend } from '../src/lib/push-notifications'
 
@@ -23,12 +22,14 @@ const queryClient = new QueryClient({
 })
 
 function InitialLayout() {
-  const { user, setAuth } = useAuthStore()
+  const { user } = useAuthStore()
   const segments = useSegments()
   const router = useRouter()
   const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate the offline cache + try to restore session from stored refresh token.
+  // Hydrate the offline cache. Session is intentionally NOT restored — we
+  // require the user to log in again every time the app is re-opened, so any
+  // previously-stored refresh token is cleared here on boot.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -40,16 +41,12 @@ function InitialLayout() {
       if (cancelled) return
 
       try {
-        const refreshToken = await AsyncStorage.getItem('refreshToken')
-        if (refreshToken && !user) {
-          const { data } = await api.post('/auth/refresh')
-          setAuth(data.accessToken, data.user)
-        }
+        await AsyncStorage.removeItem('refreshToken')
       } catch {
-        // Not logged in — that's fine
-      } finally {
-        if (!cancelled) setHydrated(true)
+        // ignore
       }
+
+      if (!cancelled) setHydrated(true)
     })()
     return () => { cancelled = true }
   }, [])
