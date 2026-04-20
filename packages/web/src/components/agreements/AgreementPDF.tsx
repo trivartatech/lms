@@ -219,17 +219,15 @@ function BulletItem({ text }: { text: string }) {
 // wrap={false} so it never gets split across a page break.
 
 function AgreementDocument({ agreement }: { agreement: Agreement }) {
-  const rawValue         = Number(agreement.value) || 0
-  const totalStudents    = agreement.school?.totalStudents
-  const hasStudents      = totalStudents != null && totalStudents > 0
-  // Monetary figures are only meaningful once student strength is declared —
-  // otherwise the PDF is a fill-in-the-blank template.
-  const value            = hasStudents ? rawValue : 0
-  const rate             = hasStudents ? Math.round(rawValue / totalStudents!) : 0
-  const advance          = hasStudents ? Number(agreement.advancePayment) || 0 : 0
+  const value            = Number(agreement.value) || 0
+  const declaredStudents = agreement.school?.totalStudents
+  // Treat missing student count as 1 so rate = total value (single-unit contract).
+  const effectiveStudents = declaredStudents != null && declaredStudents > 0 ? declaredStudents : 1
+  const rate             = Math.round(value / effectiveStudents)
+  const advance          = Number(agreement.advancePayment) || 0
   const totalInstalments = agreement.totalInstalments || 0
-  const remaining        = hasStudents ? Math.max(0, rawValue - advance) : 0
-  const instalmentAmt    = hasStudents && totalInstalments > 0 ? Math.round(remaining / totalInstalments) : 0
+  const remaining        = Math.max(0, value - advance)
+  const instalmentAmt    = totalInstalments > 0 ? Math.round(remaining / totalInstalments) : 0
   const instRows         = totalInstalments > 0
     ? Array.from({ length: totalInstalments }, (_, i) => i + 1)
     : [1, 2, 3]
@@ -357,7 +355,7 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
           <Text style={s.subSectionTitle}>2.1 Declared Student Strength</Text>
           <View style={s.blueBox}>
             <Text style={s.blueBoxText}>
-              Total Students: {totalStudents != null ? String(totalStudents) : '________'}
+              Total Students: {String(effectiveStudents)}
             </Text>
           </View>
 
@@ -365,22 +363,18 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
           <Text style={s.subSectionTitle}>2.2 Agreed Rate Per Student Per Year</Text>
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Rate per student per annum</Text>
-            <Text style={s.tableValue}>₹{rate > 0 ? rate.toLocaleString('en-IN') : '________'} per student</Text>
+            <Text style={s.tableValue}>₹{rate.toLocaleString('en-IN')} per student</Text>
           </View>
 
           {/* 2.3 */}
           <Text style={s.subSectionTitle}>2.3 Total Contract Value</Text>
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Total Agreement Value</Text>
-            <Text style={s.tableValue}>
-              {hasStudents ? `₹${value.toLocaleString('en-IN')}` : '₹________'}
-            </Text>
+            <Text style={s.tableValue}>₹{value.toLocaleString('en-IN')}</Text>
           </View>
-          {hasStudents && (
-            <View style={s.blueBox}>
-              <Text style={s.blueBoxText}>(Rupees {numberToWords(value)} only)</Text>
-            </View>
-          )}
+          <View style={s.blueBox}>
+            <Text style={s.blueBoxText}>(Rupees {numberToWords(value)} only)</Text>
+          </View>
         </View>
 
         {/* ────────────────────────────────────────────────────────────────── */}
@@ -396,16 +390,12 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Advance Payment (received)</Text>
             <Text style={s.tableValue}>
-              {hasStudents
-                ? (advance > 0 ? `₹${advance.toLocaleString('en-IN')}` : '₹ —')
-                : '₹________'}
+              {advance > 0 ? `₹${advance.toLocaleString('en-IN')}` : '₹ —'}
             </Text>
           </View>
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Remaining Balance</Text>
-            <Text style={s.tableValue}>
-              {hasStudents ? `₹${remaining.toLocaleString('en-IN')}` : '₹________'}
-            </Text>
+            <Text style={s.tableValue}>₹{remaining.toLocaleString('en-IN')}</Text>
           </View>
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Number of Instalments</Text>
@@ -417,16 +407,14 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
               <Text style={s.tableValue}>₹{instalmentAmt.toLocaleString('en-IN')}</Text>
             </View>
           )}
-          {hasStudents && (
-            <View style={[s.blueBox, { marginTop: 6 }]}>
-              <Text style={s.blueBoxText}>
-                {advance > 0
-                  ? `Advance of ₹${advance.toLocaleString('en-IN')} received. Remaining ₹${remaining.toLocaleString('en-IN')} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ₹${instalmentAmt.toLocaleString('en-IN')} each` : 'agreed instalments'}.`
-                  : `Full amount of ₹${value.toLocaleString('en-IN')} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ₹${instalmentAmt.toLocaleString('en-IN')} each` : 'agreed instalments'}.`
-                }
-              </Text>
-            </View>
-          )}
+          <View style={[s.blueBox, { marginTop: 6 }]}>
+            <Text style={s.blueBoxText}>
+              {advance > 0
+                ? `Advance of ₹${advance.toLocaleString('en-IN')} received. Remaining ₹${remaining.toLocaleString('en-IN')} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ₹${instalmentAmt.toLocaleString('en-IN')} each` : 'agreed instalments'}.`
+                : `Full amount of ₹${value.toLocaleString('en-IN')} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ₹${instalmentAmt.toLocaleString('en-IN')} each` : 'agreed instalments'}.`
+              }
+            </Text>
+          </View>
         </View>
 
         {/* ────────────────────────────────────────────────────────────────── */}
@@ -435,7 +423,7 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
         <View wrap={false}>
           <Text style={s.subSectionTitle}>Balance Payment — Instalment Schedule</Text>
           <Text style={s.body}>
-            The remaining balance of {hasStudents ? `₹${remaining.toLocaleString('en-IN')}` : '₹________'} shall be collected in{' '}
+            The remaining balance of ₹{remaining.toLocaleString('en-IN')} shall be collected in{' '}
             {totalInstalments > 0
               ? `${totalInstalments} equal instalment${totalInstalments > 1 ? 's' : ''}`
               : 'instalments'} as mutually agreed:
