@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import axios from 'axios'
+import Constants from 'expo-constants'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { useAuthStore, clearPersistedAuth } from '../src/store/auth.store'
+import { useAuthStore } from '../src/store/auth.store'
 import { hydrateCache, startCachePersister } from '../src/lib/offline-cache'
 import { syncPushTokenWithBackend } from '../src/lib/push-notifications'
+
+const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl ?? 'http://localhost:3001/api'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,9 +30,9 @@ function InitialLayout() {
   const router = useRouter()
   const [hydrated, setHydrated] = useState(false)
 
-  // On every cold start we wipe any persisted auth state and start with an
-  // empty session. This is by product decision: the user must log in each
-  // time they open the app — there is no "remember me" or silent refresh.
+  // Silently refresh the access token if a persisted refresh token exists —
+  // this keeps the user signed in across app close/reopen (WhatsApp/Gmail-style).
+  // On failure we clear state so the router sends them to /login.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -39,12 +43,28 @@ function InitialLayout() {
       }
       if (cancelled) return
 
-      // Clear any legacy persisted session from earlier builds that used
-      // zustand-persist. Safe to call even when nothing is stored.
+      // Wait for zustand-persist to finish pulling refreshToken + user from
+      // AsyncStorage. Without this await we'd read an empty store on boot
+      // and treat every cold start as a logged-out session.
       try {
-        await clearPersistedAuth()
+        if (!useAuthStore.persist.hasHydrated()) {
+          await useAuthStore.persist.rehydrate()
+        }
       } catch {
-        // ignore
+        // ignore — fall through to logged-out path
+      }
+      if (cancelled) return
+
+      const { refreshToken, setTokens, logout } = useAuthStore.getState()
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken })
+          if (!cancelled) {
+            setTokens(data.accessToken, data.refreshToken ?? refreshToken)
+          }
+        } catch {
+          if (!cancelled) logout()
+        }
       }
 
       if (!cancelled) setHydrated(true)
@@ -64,8 +84,9 @@ function InitialLayout() {
     syncPushTokenWithBackend()
   }, [user?.id])
 
-  // Guard: redirect based on auth state. Wait until clearPersistedAuth
-  // finishes so the router doesn't flicker through a phantom session.
+  // Guard: redirect based on auth state. Wait until we've attempted to
+  // restore the session (hydrated) so we don't bounce the user to /login
+  // before the silent refresh completes.
   useEffect(() => {
     if (!hydrated) return
     if (!segments.length) return
