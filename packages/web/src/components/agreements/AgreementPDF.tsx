@@ -357,7 +357,7 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
           {/* 2.1 */}
           <Text style={s.subSectionTitle}>2.1 Declared Student Strength</Text>
           <View style={s.blueBox}>
-            <Text style={[s.blueBoxText, !studentsDeclared && { color: RED }]}>
+            <Text style={(!studentsDeclared ? [s.blueBoxText, { color: RED }] : s.blueBoxText)}>
               Total Students: {studentsDeclared ? String(effectiveStudents) : '______'}
             </Text>
           </View>
@@ -373,12 +373,12 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
           <Text style={s.subSectionTitle}>2.3 Total Contract Value</Text>
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Total Agreement Value</Text>
-            <Text style={[s.tableValue, !studentsDeclared && { color: RED }]}>
+            <Text style={(!studentsDeclared ? [s.tableValue, { color: RED }] : s.tableValue)}>
               {studentsDeclared ? `₹${value.toLocaleString('en-IN')}` : '______'}
             </Text>
           </View>
           <View style={s.blueBox}>
-            <Text style={[s.blueBoxText, !studentsDeclared && { color: RED }]}>
+            <Text style={(!studentsDeclared ? [s.blueBoxText, { color: RED }] : s.blueBoxText)}>
               (Rupees {studentsDeclared ? numberToWords(value) : '______'} only)
             </Text>
           </View>
@@ -396,7 +396,7 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
 
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Advance Payment (received)</Text>
-            <Text style={[s.tableValue, !studentsDeclared && { color: RED }]}>
+            <Text style={(!studentsDeclared ? [s.tableValue, { color: RED }] : s.tableValue)}>
               {studentsDeclared
                 ? (advance > 0 ? `₹${advance.toLocaleString('en-IN')}` : '₹ —')
                 : '______'}
@@ -404,13 +404,13 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
           </View>
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Remaining Balance</Text>
-            <Text style={[s.tableValue, !studentsDeclared && { color: RED }]}>
+            <Text style={(!studentsDeclared ? [s.tableValue, { color: RED }] : s.tableValue)}>
               {studentsDeclared ? `₹${remaining.toLocaleString('en-IN')}` : '______'}
             </Text>
           </View>
           <View style={s.tableRow}>
             <Text style={s.tableLabel}>Number of Instalments</Text>
-            <Text style={[s.tableValue, !studentsDeclared && { color: RED }]}>
+            <Text style={(!studentsDeclared ? [s.tableValue, { color: RED }] : s.tableValue)}>
               {studentsDeclared ? (totalInstalments > 0 ? String(totalInstalments) : '—') : '______'}
             </Text>
           </View>
@@ -427,7 +427,7 @@ function AgreementDocument({ agreement }: { agreement: Agreement }) {
             </View>
           )}
           <View style={[s.blueBox, { marginTop: 6 }]}>
-            <Text style={[s.blueBoxText, !studentsDeclared && { color: RED }]}>
+            <Text style={(!studentsDeclared ? [s.blueBoxText, { color: RED }] : s.blueBoxText)}>
               {studentsDeclared
                 ? (advance > 0
                     ? `Advance of ₹${advance.toLocaleString('en-IN')} received. Remaining ₹${remaining.toLocaleString('en-IN')} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ₹${instalmentAmt.toLocaleString('en-IN')} each` : 'agreed instalments'}.`
