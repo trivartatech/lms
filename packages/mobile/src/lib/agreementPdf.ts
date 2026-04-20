@@ -73,8 +73,12 @@ function esc(s: string): string {
 function buildHtml(agreement: Agreement): string {
   const value            = Number(agreement.value) || 0
   const declaredStudents = agreement.school?.totalStudents
-  const effectiveStudents = declaredStudents != null && declaredStudents > 0 ? declaredStudents : 1
+  // Treat 1 / missing student count as "not declared" — only the per-student rate is filled,
+  // every other monetary field renders as a red ______ placeholder.
+  const studentsDeclared = declaredStudents != null && declaredStudents > 1
+  const effectiveStudents = studentsDeclared ? declaredStudents! : 1
   const rate             = Math.round(value / effectiveStudents)
+  const blank            = '<span class="blank">______</span>'
   const advance          = Number(agreement.advancePayment) || 0
   const totalInstalments = agreement.totalInstalments || 0
   const remaining        = Math.max(0, value - advance)
@@ -121,6 +125,8 @@ function buildHtml(agreement: Agreement): string {
   ul { margin: 0; padding-left: 18px; }
   li { font-size: 10pt; line-height: 1.4; margin-bottom: 3px; }
   .bluebox { background: #dbeafe; border-left: 3px solid #1e40af; padding: 6px; margin: 4px 0; border-radius: 2px; font-size: 10pt; color: #1e40af; }
+  .bluebox.red, .bluebox.red * { color: #dc2626; }
+  .blank { color: #dc2626; font-weight: 700; }
   .hr { border-bottom: 1px solid #dbeafe; margin: 6px 0; }
   table.kv { width: 100%; border-collapse: collapse; margin-top: 2px; }
   table.kv td { padding: 4px 0; border-bottom: 1px solid #e5e7eb; font-size: 10pt; }
@@ -193,39 +199,43 @@ function buildHtml(agreement: Agreement): string {
     <h2>2. Student-Based Commercial Structure</h2>
     <p>The pricing model is determined by the total student strength declared by the Institution. All amounts are calculated on a per-student, per-year basis.</p>
     <h3>2.1 Declared Student Strength</h3>
-    <div class="bluebox">Total Students: ${String(effectiveStudents)}</div>
+    <div class="bluebox${studentsDeclared ? '' : ' red'}">Total Students: ${studentsDeclared ? String(effectiveStudents) : '______'}</div>
     <h3>2.2 Agreed Rate Per Student Per Year</h3>
     <table class="kv">
       <tr><td>Rate per student per annum</td><td>${inr(rate)} per student</td></tr>
     </table>
     <h3>2.3 Total Contract Value</h3>
     <table class="kv">
-      <tr><td>Total Agreement Value</td><td>${inr(value)}</td></tr>
+      <tr><td>Total Agreement Value</td><td>${studentsDeclared ? inr(value) : blank}</td></tr>
     </table>
-    <div class="bluebox">(Rupees ${esc(numberToWords(value))} only)</div>
+    <div class="bluebox${studentsDeclared ? '' : ' red'}">(Rupees ${studentsDeclared ? esc(numberToWords(value)) : '______'} only)</div>
   </section>
 
   <section class="keep">
     <h3>2.4 Payment Terms</h3>
     <p>The total contract value shall be paid in structured instalments as mutually agreed. The payment schedule is as follows:</p>
     <table class="kv">
-      <tr><td>Advance Payment (received)</td><td>${advance > 0 ? inr(advance) : '₹ —'}</td></tr>
-      <tr><td>Remaining Balance</td><td>${inr(remaining)}</td></tr>
-      <tr><td>Number of Instalments</td><td>${totalInstalments > 0 ? String(totalInstalments) : '—'}</td></tr>
-      ${totalInstalments > 0 ? `<tr><td>Amount per Instalment</td><td>${inr(instalmentAmt)}</td></tr>` : ''}
+      <tr><td>Advance Payment (received)</td><td>${studentsDeclared ? (advance > 0 ? inr(advance) : '₹ —') : blank}</td></tr>
+      <tr><td>Remaining Balance</td><td>${studentsDeclared ? inr(remaining) : blank}</td></tr>
+      <tr><td>Number of Instalments</td><td>${studentsDeclared ? (totalInstalments > 0 ? String(totalInstalments) : '—') : blank}</td></tr>
+      ${studentsDeclared
+        ? (totalInstalments > 0 ? `<tr><td>Amount per Instalment</td><td>${inr(instalmentAmt)}</td></tr>` : '')
+        : `<tr><td>Amount per Instalment</td><td>${blank}</td></tr>`}
     </table>
-    <div class="bluebox" style="margin-top:6px;">
-      ${advance > 0
-        ? `Advance of ${inr(advance)} received. Remaining ${inr(remaining)} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ${inr(instalmentAmt)} each` : 'agreed instalments'}.`
-        : `Full amount of ${inr(value)} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ${inr(instalmentAmt)} each` : 'agreed instalments'}.`}
+    <div class="bluebox${studentsDeclared ? '' : ' red'}" style="margin-top:6px;">
+      ${studentsDeclared
+        ? (advance > 0
+            ? `Advance of ${inr(advance)} received. Remaining ${inr(remaining)} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ${inr(instalmentAmt)} each` : 'agreed instalments'}.`
+            : `Full amount of ${inr(value)} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ${inr(instalmentAmt)} each` : 'agreed instalments'}.`)
+        : 'Payment schedule to be finalised once student strength is declared.'}
     </div>
   </section>
 
   <section class="keep">
     <h3>Balance Payment — Instalment Schedule</h3>
-    <p>The remaining balance of ${inr(remaining)} shall be collected in ${totalInstalments > 0 ? `${totalInstalments} equal instalment${totalInstalments > 1 ? 's' : ''}` : 'instalments'} as mutually agreed:</p>
+    <p>The remaining balance of ${studentsDeclared ? inr(remaining) : '______'} shall be collected in ${studentsDeclared ? (totalInstalments > 0 ? `${totalInstalments} equal instalment${totalInstalments > 1 ? 's' : ''}` : 'instalments') : '______ instalments'} as mutually agreed:</p>
     <table class="kv">
-      ${instRows.map((i) => `<tr><td>Instalment ${i}</td><td>${instalmentAmt > 0 ? inr(instalmentAmt) : '₹________'}  on ________</td></tr>`).join('')}
+      ${instRows.map((i) => `<tr><td>Instalment ${i}</td><td>${studentsDeclared ? `${instalmentAmt > 0 ? inr(instalmentAmt) : '₹________'}  on ________` : `${blank}  on ${blank}`}</td></tr>`).join('')}
     </table>
   </section>
 
