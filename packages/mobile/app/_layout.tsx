@@ -44,6 +44,18 @@ function InitialLayout() {
       }
       if (cancelled) return
 
+      // Wait for zustand-persist to finish pulling refreshToken + user from
+      // AsyncStorage. Without this await we'd read an empty store on boot
+      // and treat every cold start as a logged-out session.
+      try {
+        if (!useAuthStore.persist.hasHydrated()) {
+          await useAuthStore.persist.rehydrate()
+        }
+      } catch {
+        // ignore — fall through to logged-out path
+      }
+      if (cancelled) return
+
       const { refreshToken, setTokens, logout } = useAuthStore.getState()
       if (refreshToken) {
         try {
