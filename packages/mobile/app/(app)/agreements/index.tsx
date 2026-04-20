@@ -16,7 +16,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, ChevronDown, X, Download } from 'lucide-react-native'
+import { Pencil, Plus, ChevronDown, X, Share2 } from 'lucide-react-native'
 import { C } from '@/lib/colors'
 import { formatCurrency, formatDate, daysFromNow, todayISO } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
@@ -102,7 +102,7 @@ function AgreementCard({
             onPress={() => downloadAgreementPDF(agreement)}
             hitSlop={6}
           >
-            <Download size={15} color={C.primary} />
+            <Share2 size={15} color={C.primary} />
           </Pressable>
           <Pressable
             style={s.editBtn}

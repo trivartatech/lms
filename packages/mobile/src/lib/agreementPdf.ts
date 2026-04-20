@@ -1,5 +1,6 @@
 import * as Print from 'expo-print'
 import * as Sharing from 'expo-sharing'
+import * as FileSystem from 'expo-file-system'
 import { Alert } from 'react-native'
 import type { Agreement } from '@lms/shared'
 
@@ -313,24 +314,48 @@ function buildHtml(agreement: Agreement): string {
 </html>`
 }
 
+/** Slugify a school name into a safe filename fragment. */
+function safeFilename(name: string): string {
+  return name
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .slice(0, 60) || 'agreement'
+}
+
 /**
  * Render the agreement HTML to a PDF via expo-print, then share it through the
- * OS share sheet. Errors are surfaced to the user with a friendly Alert.
+ * OS share sheet. The generated file is renamed to a human-readable filename
+ * (e.g. "Agreement-ABC-School.pdf") so downstream apps show a friendly name.
+ * Errors are surfaced to the user with an Alert.
  */
 export async function downloadAgreementPDF(agreement: Agreement): Promise<void> {
   try {
     const html = buildHtml(agreement)
-    const { uri } = await Print.printToFileAsync({ html, base64: false })
+    const { uri: tempUri } = await Print.printToFileAsync({ html, base64: false })
+
+    // Rename the temp file so the share-sheet preview and downstream apps see
+    // "Agreement-<school>.pdf" instead of the random print-XXXX.pdf name.
+    const schoolName  = agreement.school?.name ?? `agreement-${agreement.id}`
+    const friendlyName = `Agreement-${safeFilename(schoolName)}.pdf`
+    const dir          = tempUri.substring(0, tempUri.lastIndexOf('/') + 1)
+    const renamedUri   = `${dir}${friendlyName}`
+    try {
+      await FileSystem.moveAsync({ from: tempUri, to: renamedUri })
+    } catch {
+      // If rename fails (rare — file already exists, etc.) fall back to the
+      // original temp uri so sharing still works.
+    }
+    const shareUri = (await FileSystem.getInfoAsync(renamedUri)).exists ? renamedUri : tempUri
 
     if (!(await Sharing.isAvailableAsync())) {
-      Alert.alert('Sharing unavailable', `PDF saved to ${uri}`)
+      Alert.alert('Sharing unavailable', `PDF saved to ${shareUri}`)
       return
     }
-    const schoolName = agreement.school?.name ?? `agreement-${agreement.id}`
-    await Sharing.shareAsync(uri, {
+    await Sharing.shareAsync(shareUri, {
       mimeType: 'application/pdf',
       UTI: 'com.adobe.pdf',
-      dialogTitle: `Agreement – ${schoolName}`,
+      dialogTitle: `Share Agreement – ${schoolName}`,
     })
   } catch (err) {
     console.warn('[agreementPdf] generation failed:', err)
