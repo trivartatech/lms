@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import type { UserSummary } from '@lms/shared'
 
@@ -13,31 +12,27 @@ interface AuthState {
   logout: () => void
 }
 
-// Session is persisted across app restarts — refreshToken + user are stored
-// in AsyncStorage so the user stays signed in after closing/reopening the app.
-// Access tokens are short-lived (15m) and refreshed silently via /auth/refresh
-// on boot or on 401 responses. Multi-device login is supported server-side.
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-      setAuth: (accessToken, refreshToken, user) => set({ accessToken, refreshToken, user }),
-      setAccessToken: (accessToken) => set({ accessToken }),
-      setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
-      logout: () => set({ accessToken: null, refreshToken: null, user: null }),
-    }),
-    {
-      name: 'lms-auth',
-      storage: createJSONStorage(() => AsyncStorage),
-      // Only persist the refresh token and user profile — access token is
-      // always re-derived via /auth/refresh on boot, so there's no point
-      // writing it to disk.
-      partialize: (state) => ({
-        refreshToken: state.refreshToken,
-        user: state.user,
-      }),
-    },
-  ),
-)
+// Session is intentionally NOT persisted — the user must log in every time
+// they open the app. Tokens live in memory only. Any previously persisted
+// session is purged on boot by clearPersistedAuth() in app/_layout.tsx.
+export const useAuthStore = create<AuthState>()((set) => ({
+  accessToken: null,
+  refreshToken: null,
+  user: null,
+  setAuth: (accessToken, refreshToken, user) => set({ accessToken, refreshToken, user }),
+  setAccessToken: (accessToken) => set({ accessToken }),
+  setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
+  logout: () => set({ accessToken: null, refreshToken: null, user: null }),
+}))
+
+/**
+ * Wipe any legacy persisted auth state left over from builds where the
+ * session was remembered across restarts. Call once on app boot.
+ */
+export async function clearPersistedAuth() {
+  try {
+    await AsyncStorage.removeItem('lms-auth')
+  } catch {
+    // ignore — storage may be unavailable on first run
+  }
+}
