@@ -18,7 +18,15 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@lms/shared": ["../shared/src/index.ts"]
+      "@lms/shared": ["../shared/src/index.ts"],
+      // Force `react` / `react-dom` type resolution to the locally-installed
+      // React 18 copies. Prevents TS from picking up the React 19 types that
+      // get hoisted to the monorepo root by the Expo / mobile workspace
+      // (whose ReactNode now includes `bigint`, breaking forwardRef JSX).
+      "react": ["./node_modules/@types/react"],
+      "react/*": ["./node_modules/@types/react/*"],
+      "react-dom": ["./node_modules/@types/react-dom"],
+      "react-dom/*": ["./node_modules/@types/react-dom/*"]
     }
   },
   "include": ["src"],
