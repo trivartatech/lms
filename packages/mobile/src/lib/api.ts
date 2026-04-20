@@ -21,13 +21,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !original._retry) {
       original._retry = true
       try {
-        // In-memory refresh token — lives only for the current app session.
         const refreshToken = useAuthStore.getState().refreshToken
         if (!refreshToken) throw new Error('No refresh token')
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, {}, {
-          headers: { Cookie: `refreshToken=${refreshToken}` },
-        })
-        useAuthStore.getState().setAccessToken(data.accessToken)
+        // Mobile passes refresh token in the body (no cookie jar in RN).
+        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken })
+        useAuthStore.getState().setTokens(data.accessToken, data.refreshToken ?? refreshToken)
         original.headers.Authorization = `Bearer ${data.accessToken}`
         return api(original)
       } catch {

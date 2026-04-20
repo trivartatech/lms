@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import AsyncStorage from '@react-native-async-storage/async-storage'
+import axios from 'axios'
+import Constants from 'expo-constants'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuthStore } from '../src/store/auth.store'
 import { hydrateCache, startCachePersister } from '../src/lib/offline-cache'
 import { syncPushTokenWithBackend } from '../src/lib/push-notifications'
+
+const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl ?? 'http://localhost:3001/api'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,9 +30,10 @@ function InitialLayout() {
   const router = useRouter()
   const [hydrated, setHydrated] = useState(false)
 
-  // Hydrate the offline cache. Session is intentionally NOT restored — we
-  // require the user to log in again every time the app is re-opened, so any
-  // previously-stored refresh token is cleared here on boot.
+  // Hydrate the offline cache and silently refresh the access token if a
+  // persisted refresh token exists — this keeps the user signed in across
+  // app close/reopen. On failure we clear state so the router sends them
+  // to /login.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -40,10 +44,16 @@ function InitialLayout() {
       }
       if (cancelled) return
 
-      try {
-        await AsyncStorage.removeItem('refreshToken')
-      } catch {
-        // ignore
+      const { refreshToken, setTokens, logout } = useAuthStore.getState()
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken })
+          if (!cancelled) {
+            setTokens(data.accessToken, data.refreshToken ?? refreshToken)
+          }
+        } catch {
+          if (!cancelled) logout()
+        }
       }
 
       if (!cancelled) setHydrated(true)
@@ -63,9 +73,11 @@ function InitialLayout() {
     syncPushTokenWithBackend()
   }, [user?.id])
 
-  // Guard: redirect based on auth state
-  // segments.length === 0 means the navigator isn't ready yet — skip
+  // Guard: redirect based on auth state. Wait until we've attempted to
+  // restore the session (hydrated) so we don't bounce the user to /login
+  // before the silent refresh completes.
   useEffect(() => {
+    if (!hydrated) return
     if (!segments.length) return
 
     const inAuth = segments[0] === '(auth)'
@@ -74,7 +86,7 @@ function InitialLayout() {
     } else if (user && inAuth) {
       router.replace('/(app)')
     }
-  }, [user, segments])
+  }, [user, segments, hydrated])
 
   return (
     <Stack screenOptions={{ headerShown: false }} />

@@ -57,8 +57,8 @@ export default function LoginScreen() {
         email: values.email,
         password: values.password,
       })
-      // Session is in-memory only — no refresh token is persisted, so closing
-      // the app logs the user out. Multi-device login is supported server-side.
+      // Persist refresh token + user so the session survives app close/reopen.
+      // Access token is re-derived silently via /auth/refresh on boot.
       setAuth(data.accessToken, data.refreshToken ?? '', data.user)
     } catch (err: any) {
       console.log('[LOGIN ERROR]', {
