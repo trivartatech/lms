@@ -1,10 +1,15 @@
 import { View, ActivityIndicator, StyleSheet } from 'react-native'
 import { C } from '@/lib/colors'
 
-export function LoadingSpinner() {
+interface Props {
+  /** Override the screen-reader announcement. Defaults to "Loading". */
+  label?: string
+}
+
+export function LoadingSpinner({ label = 'Loading' }: Props = {}) {
   return (
-    <View style={s.container}>
-      <ActivityIndicator size="large" color={C.primary} />
+    <View style={s.container} accessibilityRole="progressbar" accessibilityLabel={label}>
+      <ActivityIndicator size="large" color={C.primary} accessibilityLabel={label} />
     </View>
   )
 }

@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  RefreshControl,
   Alert,
   TextInput,
 } from 'react-native'
@@ -32,6 +31,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { ConfirmModal } from '@/components/shared/ConfirmModal'
+import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
 import { SearchBar } from '@/components/shared/SearchBar'
 import { api } from '@/lib/api'
 import type { Task, TaskType, UserSummary } from '@lms/shared'
@@ -605,12 +605,7 @@ export default function TasksScreen() {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={s.list}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor={C.primary}
-            colors={[C.primary]}
-          />
+          <AppRefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
         renderItem={({ item }) => (
           <TaskCard task={item} onComplete={(t) => setConfirmTask(t)} />

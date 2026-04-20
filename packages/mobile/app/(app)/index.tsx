@@ -4,8 +4,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  RefreshControl,
-  useWindowDimensions,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
@@ -23,6 +21,7 @@ import {
   Search,
 } from 'lucide-react-native'
 import { GlobalSearchModal } from '@/components/shared/GlobalSearchModal'
+import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
 import { C } from '@/lib/colors'
 import { formatCurrency, formatDate, daysFromNow } from '@/lib/utils'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
@@ -32,7 +31,7 @@ import type { DashboardStats } from '@lms/shared'
 
 // ─── Pipeline stage config ────────────────────────────────────────────────────
 const STAGE_CONFIG: Record<string, { color: string; label: string }> = {
-  NEW:          { color: '#64748b', label: 'New' },
+  NEW:          { color: C.slate, label: 'New' },
   QUALIFIED:    { color: C.primary, label: 'Qualified' },
   DEMO:         { color: C.purple, label: 'Demo' },
   PROPOSAL:     { color: C.warning, label: 'Proposal' },
@@ -98,7 +97,6 @@ function SectionCard({
 export default function DashboardScreen() {
   const router = useRouter()
   const user = useAuthStore((s) => s.user)
-  const { width } = useWindowDimensions()
   const [showSearch, setShowSearch] = useState(false)
 
   const {
@@ -161,8 +159,6 @@ export default function DashboardScreen() {
   // ── Pipeline bar chart ────────────────────────────────────────────────────
   const pipeline = stats?.pipelineByStage ?? []
   const maxPipelineCount = pipeline.reduce((m, s) => Math.max(m, s.count), 1)
-  // Available bar width = screen - horizontal paddings - label column - count column
-  const barAreaWidth = width - 32 - 16 - 100 - 44
 
   // ── Upcoming renewals (next 60 days) ──────────────────────────────────────
   const renewals = (stats?.upcomingRenewals ?? []).filter(
@@ -187,12 +183,7 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor={C.primary}
-            colors={[C.primary]}
-          />
+          <AppRefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
       >
         {/* ── Greeting ─────────────────────────────────────────────────── */}
@@ -206,7 +197,8 @@ export default function DashboardScreen() {
           <Pressable
             onPress={() => setShowSearch(true)}
             style={({ pressed }) => [styles.searchBtn, pressed && { opacity: 0.8 }]}
-            hitSlop={6}
+            hitSlop={8}
+            accessibilityLabel="Open global search"
           >
             <Search size={18} color={C.primary} />
           </Pressable>
@@ -254,9 +246,9 @@ export default function DashboardScreen() {
                 color: C.textMuted,
                 label: item.stage,
               }
-              const barWidth =
+              const pct =
                 maxPipelineCount > 0
-                  ? (item.count / maxPipelineCount) * barAreaWidth
+                  ? Math.max((item.count / maxPipelineCount) * 100, item.count > 0 ? 3 : 0)
                   : 0
               return (
                 <View key={item.stage} style={styles.pipelineRow}>
@@ -267,7 +259,7 @@ export default function DashboardScreen() {
                     <View
                       style={[
                         styles.pipelineBar,
-                        { width: Math.max(barWidth, 4), backgroundColor: cfg.color },
+                        { width: `${pct}%`, backgroundColor: cfg.color },
                       ]}
                     />
                   </View>

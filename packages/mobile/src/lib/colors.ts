@@ -30,4 +30,13 @@ export const C = {
   gray: '#374151',
   grayLight: '#f3f4f6',
   grayText: '#374151',
+  cyan: '#06b6d4',
+  cyanLight: '#cffafe',
+  cyanText: '#0e7490',
+  violet: '#8b5cf6',
+  violetLight: '#ede9fe',
+  violetText: '#6d28d9',
+  slate: '#64748b',
+  slateLight: '#f1f5f9',
+  slateText: '#475569',
 } as const

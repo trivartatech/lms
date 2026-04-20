@@ -13,17 +13,18 @@ import {
   Platform,
   TextInput,
   Linking,
-  RefreshControl,
   SafeAreaView,
 } from 'react-native'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
+import { Building2, MapPin } from 'lucide-react-native'
 import { C } from '@/lib/colors'
 import { formatDate, todayISO } from '@/lib/utils'
 import { SearchBar } from '@/components/shared/SearchBar'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { ContactActions } from '@/components/shared/ContactActions'
+import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
 import { api } from '@/lib/api'
 import type { School, User } from '@lms/shared'
 
@@ -97,7 +98,7 @@ export default function SchoolsScreen() {
         data={filtered}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={[s.list, filtered.length === 0 && { flex: 1 }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
+        refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <EmptyState
             title={search ? 'No schools match your search' : 'No schools yet'}
@@ -112,7 +113,7 @@ export default function SchoolsScreen() {
             {/* Card header */}
             <View style={s.cardHeader}>
               <View style={s.schoolIconWrap}>
-                <Text style={s.schoolIcon}>🏫</Text>
+                <Building2 size={20} color={C.primary} />
               </View>
               <View style={s.cardHeaderText}>
                 <Text style={s.schoolName} numberOfLines={1}>{school.name}</Text>
@@ -134,7 +135,10 @@ export default function SchoolsScreen() {
 
             {/* Location */}
             {school.location ? (
-              <Text style={s.location} numberOfLines={1}>📍 {school.location}</Text>
+              <View style={s.locationRow}>
+                <MapPin size={12} color={C.textMuted} />
+                <Text style={s.location} numberOfLines={1}>{school.location}</Text>
+              </View>
             ) : null}
 
             {/* Referred by badge */}
@@ -469,7 +473,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 10,
   },
-  schoolIcon: { fontSize: 20 },
+  locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   cardHeaderText: { flex: 1 },
   schoolName: { fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 1 },
   contactPerson: { fontSize: 13, color: C.textSecondary },
@@ -485,7 +489,7 @@ const s = StyleSheet.create({
     borderColor: '#86efac',
   },
   callBtnText: { fontSize: 12, color: C.successText, fontWeight: '600' },
-  location: { fontSize: 12, color: C.textMuted, marginBottom: 6 },
+  location: { fontSize: 12, color: C.textMuted, flex: 1 },
   referredBadge: {
     alignSelf: 'flex-start',
     backgroundColor: C.purpleLight,

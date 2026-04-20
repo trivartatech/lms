@@ -9,7 +9,6 @@ import {
   Pressable,
   StyleSheet,
   SafeAreaView,
-  RefreshControl,
   KeyboardAvoidingView,
   Platform,
   Alert,
@@ -30,6 +29,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { SearchBar } from '@/components/shared/SearchBar'
 import { ContactActions } from '@/components/shared/ContactActions'
+import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
 import type { Lead, PaginatedLeads, PipelineStage, UserSummary, School } from '@lms/shared'
@@ -395,19 +395,34 @@ function LeadFormModal({ visible, onClose, onSaved, lead }: LeadFormModalProps) 
             <TextInput style={fm.input} value={totalStudents} onChangeText={setTotalStudents} placeholder="e.g. 500" placeholderTextColor={C.textMuted} keyboardType="numeric" />
 
             <Text style={fm.label}>Pipeline Stage</Text>
-            <Pressable style={fm.picker} onPress={() => setShowStagePicker(true)}>
+            <Pressable
+              style={({ pressed }) => [fm.picker, pressed && fm.pickerPressed]}
+              onPress={() => setShowStagePicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Pipeline stage, currently ${STAGE_LABELS[pipelineStage]}`}
+            >
               <Text style={fm.pickerText}>{STAGE_LABELS[pipelineStage]}</Text>
               <Text style={fm.pickerArrow}>▼</Text>
             </Pressable>
 
             <Text style={fm.label}>Assign To</Text>
-            <Pressable style={fm.picker} onPress={() => setShowUserPicker(true)}>
+            <Pressable
+              style={({ pressed }) => [fm.picker, pressed && fm.pickerPressed]}
+              onPress={() => setShowUserPicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Assign to, currently ${assignedUser ? assignedUser.name : 'Unassigned'}`}
+            >
               <Text style={fm.pickerText}>{assignedUser ? assignedUser.name : 'Unassigned'}</Text>
               <Text style={fm.pickerArrow}>▼</Text>
             </Pressable>
 
             <Text style={fm.label}>Referred By</Text>
-            <Pressable style={fm.picker} onPress={() => setShowReferrerPicker(true)}>
+            <Pressable
+              style={({ pressed }) => [fm.picker, pressed && fm.pickerPressed]}
+              onPress={() => setShowReferrerPicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Referred by, currently ${referrerLabel}`}
+            >
               <Text style={fm.pickerText}>{referrerLabel}</Text>
               <Text style={fm.pickerArrow}>▼</Text>
             </Pressable>
@@ -1060,7 +1075,7 @@ export default function LeadsScreen() {
             keyExtractor={(item) => String(item.id)}
             contentContainerStyle={s.list}
             refreshControl={
-              <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={C.primary} />
+              <AppRefreshControl refreshing={isRefetching} onRefresh={refetch} />
             }
             ListEmptyComponent={
               <EmptyState
@@ -1091,7 +1106,7 @@ export default function LeadsScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={s.pipelineContainer}
             refreshControl={
-              <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={C.primary} />
+              <AppRefreshControl refreshing={isRefetching} onRefresh={refetch} />
             }
           >
             {PIPELINE_STAGES.map((stage) => (
@@ -1217,7 +1232,10 @@ const lc = StyleSheet.create({
 
 const pc = StyleSheet.create({
   column: {
-    width: 180,
+    // Wider column reads better on mid-size phones and tablets; still fits
+    // three columns on a typical 360-width device when the user scrolls.
+    width: 220,
+    minHeight: 200,
     borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: C.surface,
@@ -1282,21 +1300,27 @@ const ba = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
   },
-  count: { color: '#fff', fontSize: 13, fontWeight: '600', flex: 1 },
+  count: { color: '#fff', fontSize: 13, fontWeight: '700', flex: 1 },
   btn: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    // Higher-contrast chip on the dark bar: ~30% white with a subtle
+    // outline so the button silhouette is readable against #111827.
+    backgroundColor: 'rgba(255,255,255,0.30)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
   },
   btnDanger: {
     backgroundColor: C.error,
+    borderWidth: 1,
+    borderColor: '#fca5a5',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
   },
-  btnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
-  cancel: { padding: 6 },
+  btnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  cancel: { padding: 10, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   cancelText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 })
 
@@ -1333,10 +1357,15 @@ const fm = StyleSheet.create({
     borderColor: C.border,
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    minHeight: 44,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  pickerPressed: {
+    backgroundColor: C.grayLight,
+    borderColor: C.borderDark,
   },
   pickerText: { fontSize: 14, color: C.text },
   pickerArrow: { fontSize: 12, color: C.textMuted },
@@ -1359,8 +1388,12 @@ const fm = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 16,
-    paddingBottom: 32,
-    maxHeight: '70%',
+    // Generous bottom padding so the last option stays clear of the
+    // home indicator on phones with gesture bars / notches.
+    paddingBottom: 40,
+    // 80% leaves breathing room above the notch in portrait and stays
+    // usable in landscape where 70% was cramped.
+    maxHeight: '80%',
   },
   pickerModalTitle: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 12 },
   pickerOption: {

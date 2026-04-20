@@ -193,8 +193,8 @@ function AddonSection({ category, isAdmin }: { category: 'ERP' | 'ADDON'; isAdmi
   return (
     <View style={s.section}>
       <View style={s.sectionHeader}>
-        <View style={[s.sectionIconWrap, { backgroundColor: isERP ? C.primaryLight : '#ede9fe' }]}>
-          {isERP ? <Package size={18} color={C.primary} /> : <Layers size={18} color="#6d28d9" />}
+        <View style={[s.sectionIconWrap, { backgroundColor: isERP ? C.primaryLight : C.purpleLight }]}>
+          {isERP ? <Package size={18} color={C.primary} /> : <Layers size={18} color={C.purpleText} />}
         </View>
         <Text style={s.sectionTitle}>{isERP ? 'ERP Products' : 'Add-On Services'}</Text>
         <Pressable
@@ -983,10 +983,10 @@ const fm = StyleSheet.create({
   categoryBadgeWrap: { marginBottom: 8 },
   categoryBadge: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   categoryBadgeERP: { backgroundColor: C.primaryLight },
-  categoryBadgeAddon: { backgroundColor: '#ede9fe' },
+  categoryBadgeAddon: { backgroundColor: C.purpleLight },
   categoryBadgeText: { fontSize: 12, fontWeight: '700' },
   categoryBadgeTextERP: { color: C.primary },
-  categoryBadgeTextAddon: { color: '#6d28d9' },
+  categoryBadgeTextAddon: { color: C.purpleText },
   submitBtn: {
     backgroundColor: C.primary,
     borderRadius: 10,

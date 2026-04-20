@@ -74,7 +74,7 @@ export function ContactActions({
       <Pressable
         key="call"
         onPress={() => openDialer(phone)}
-        hitSlop={6}
+        hitSlop={12}
         style={[btnStyle, { backgroundColor: C.infoLight }]}
         accessibilityLabel={`Call ${phone}`}
       >
@@ -85,7 +85,7 @@ export function ContactActions({
       <Pressable
         key="wa"
         onPress={() => openWhatsApp(phone)}
-        hitSlop={6}
+        hitSlop={12}
         style={[btnStyle, { backgroundColor: C.successLight }]}
         accessibilityLabel={`WhatsApp ${phone}`}
       >
@@ -99,7 +99,7 @@ export function ContactActions({
       <Pressable
         key="mail"
         onPress={() => openMail(email)}
-        hitSlop={6}
+        hitSlop={12}
         style={[btnStyle, { backgroundColor: C.purpleLight }]}
         accessibilityLabel={`Email ${email}`}
       >

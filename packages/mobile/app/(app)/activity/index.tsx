@@ -35,8 +35,8 @@ const EVENT_TYPE_COLOR: Record<string, string> = {
   REFERRAL_CREATED: C.orange,
   TASK_COMPLETED:   C.success,
   NOTE_ADDED:       C.warning,
-  CALL_LOGGED:      '#06b6d4',
-  MEETING_SCHEDULED:'#8b5cf6',
+  CALL_LOGGED:      C.cyan,
+  MEETING_SCHEDULED:C.violet,
 }
 
 function getEventColor(type: string): string {

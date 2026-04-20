@@ -1,37 +1,57 @@
 import { View, Text, StyleSheet } from 'react-native'
+import { C } from '../../lib/colors'
 
-const colorMap: Record<string, { bg: string; text: string }> = {
-  NEW: { bg: '#dbeafe', text: '#1d4ed8' },
-  IN_PROGRESS: { bg: '#fef3c7', text: '#b45309' },
-  CONVERTED: { bg: '#dcfce7', text: '#15803d' },
-  LOST: { bg: '#fee2e2', text: '#b91c1c' },
-  QUALIFIED: { bg: '#dbeafe', text: '#1d4ed8' },
-  DEMO: { bg: '#ede9fe', text: '#6d28d9' },
-  PROPOSAL: { bg: '#fef3c7', text: '#b45309' },
-  NEGOTIATION: { bg: '#ffedd5', text: '#c2410c' },
-  CLOSED_WON: { bg: '#dcfce7', text: '#15803d' },
-  CLOSED_LOST: { bg: '#fee2e2', text: '#b91c1c' },
-  PENDING: { bg: '#fef3c7', text: '#b45309' },
-  COMPLETED: { bg: '#dcfce7', text: '#15803d' },
-  CANCELLED: { bg: '#fee2e2', text: '#b91c1c' },
-  DRAFT: { bg: '#f3f4f6', text: '#374151' },
-  SENT: { bg: '#dbeafe', text: '#1d4ed8' },
-  ACCEPTED: { bg: '#dcfce7', text: '#15803d' },
-  REJECTED: { bg: '#fee2e2', text: '#b91c1c' },
-  ACTIVE: { bg: '#dcfce7', text: '#15803d' },
-  EXPIRED: { bg: '#fee2e2', text: '#b91c1c' },
-  PENDING_RENEWAL: { bg: '#fef3c7', text: '#b45309' },
-  CALL: { bg: '#dbeafe', text: '#1d4ed8' },
-  MEETING: { bg: '#ede9fe', text: '#6d28d9' },
-  REMINDER: { bg: '#fef3c7', text: '#b45309' },
-  ERP: { bg: '#dbeafe', text: '#1d4ed8' },
-  ADDON: { bg: '#ede9fe', text: '#6d28d9' },
-  PAID: { bg: '#dcfce7', text: '#15803d' },
-  FIXED: { bg: '#f3f4f6', text: '#374151' },
-  PERCENTAGE: { bg: '#fef3c7', text: '#b45309' },
-  ADMIN: { bg: '#fee2e2', text: '#b91c1c' },
-  SALES_MANAGER: { bg: '#dbeafe', text: '#1d4ed8' },
-  SALES_EXECUTIVE: { bg: '#dcfce7', text: '#15803d' },
+// Map each status to a palette slot; the actual hex lives in `C` so a theme
+// tweak there flows everywhere. Each entry is a tuple of (bg, text) palette
+// keys — keeping it declarative avoids duplicating the color values here.
+type Swatch = { bg: string; text: string }
+
+const INFO: Swatch    = { bg: C.infoLight,    text: C.infoText }
+const WARN: Swatch    = { bg: C.warningLight, text: C.warningText }
+const SUCCESS: Swatch = { bg: C.successLight, text: C.successText }
+const ERROR: Swatch   = { bg: C.errorLight,   text: C.errorText }
+const PURPLE: Swatch  = { bg: C.purpleLight,  text: C.purpleText }
+const ORANGE: Swatch  = { bg: C.orangeLight,  text: C.orangeText }
+const NEUTRAL: Swatch = { bg: C.grayLight,    text: C.grayText }
+
+const colorMap: Record<string, Swatch> = {
+  // Lead statuses
+  NEW:         INFO,
+  IN_PROGRESS: WARN,
+  CONVERTED:   SUCCESS,
+  LOST:        ERROR,
+  QUALIFIED:   INFO,
+  DEMO:        PURPLE,
+  PROPOSAL:    WARN,
+  NEGOTIATION: ORANGE,
+  CLOSED_WON:  SUCCESS,
+  CLOSED_LOST: ERROR,
+  // Task / agreement / quotation states
+  PENDING:         WARN,
+  COMPLETED:       SUCCESS,
+  CANCELLED:       ERROR,
+  DRAFT:           NEUTRAL,
+  SENT:            INFO,
+  ACCEPTED:        SUCCESS,
+  REJECTED:        ERROR,
+  ACTIVE:          SUCCESS,
+  EXPIRED:         ERROR,
+  PENDING_RENEWAL: WARN,
+  // Activity types
+  CALL:     INFO,
+  MEETING:  PURPLE,
+  REMINDER: WARN,
+  // Product types
+  ERP:   INFO,
+  ADDON: PURPLE,
+  // Commission payout
+  PAID:       SUCCESS,
+  FIXED:      NEUTRAL,
+  PERCENTAGE: WARN,
+  // Roles
+  ADMIN:           ERROR,
+  SALES_MANAGER:   INFO,
+  SALES_EXECUTIVE: SUCCESS,
 }
 
 interface Props {
@@ -40,7 +60,7 @@ interface Props {
 }
 
 export function StatusBadge({ status, size = 'md' }: Props) {
-  const colors = colorMap[status] ?? { bg: '#f3f4f6', text: '#374151' }
+  const colors = colorMap[status] ?? NEUTRAL
   const label = status.replace(/_/g, ' ')
   return (
     <View style={[s.badge, { backgroundColor: colors.bg }, size === 'sm' && s.badgeSm]}>

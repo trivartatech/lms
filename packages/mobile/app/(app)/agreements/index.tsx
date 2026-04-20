@@ -10,7 +10,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  RefreshControl,
   Alert,
   TextInput,
 } from 'react-native'
@@ -23,6 +22,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { SearchBar } from '@/components/shared/SearchBar'
+import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
 import { api } from '@/lib/api'
 import { downloadAgreementPDF } from '@/lib/agreementPdf'
 import type { Agreement, AgreementStatus, School } from '@lms/shared'
@@ -202,47 +202,54 @@ function SchoolPickerModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
-      <View style={sp.wrapper}>
-        <View style={sp.header}>
-          <Text style={sp.title}>Select School</Text>
-          <Pressable onPress={onClose} hitSlop={8}>
-            <X size={20} color={C.textSecondary} />
-          </Pressable>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+      >
+        <View style={sp.wrapper}>
+          <View style={sp.header}>
+            <Text style={sp.title}>Select School</Text>
+            <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close">
+              <X size={20} color={C.textSecondary} />
+            </Pressable>
+          </View>
+          <View style={sp.searchWrap}>
+            <SearchBar
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search schools…"
+            />
+          </View>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={sp.list}
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => (
+                <Pressable
+                  style={({ pressed }) => [sp.item, pressed && sp.itemPressed]}
+                  onPress={() => {
+                    onSelect(item)
+                    setSearch('')
+                  }}
+                >
+                  <Text style={sp.itemName}>{item.name}</Text>
+                  {item.location ? (
+                    <Text style={sp.itemSub}>{item.location}</Text>
+                  ) : null}
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <EmptyState title="No schools found" subtitle="Try a different search" />
+              }
+            />
+          )}
         </View>
-        <View style={sp.searchWrap}>
-          <SearchBar
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search schools…"
-          />
-        </View>
-        {isLoading ? (
-          <LoadingSpinner />
-        ) : (
-          <FlatList
-            data={filtered}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={sp.list}
-            renderItem={({ item }) => (
-              <Pressable
-                style={({ pressed }) => [sp.item, pressed && sp.itemPressed]}
-                onPress={() => {
-                  onSelect(item)
-                  setSearch('')
-                }}
-              >
-                <Text style={sp.itemName}>{item.name}</Text>
-                {item.location ? (
-                  <Text style={sp.itemSub}>{item.location}</Text>
-                ) : null}
-              </Pressable>
-            )}
-            ListEmptyComponent={
-              <EmptyState title="No schools found" subtitle="Try a different search" />
-            }
-          />
-        )}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   )
 }
@@ -388,13 +395,16 @@ function AgreementFormModal({
     >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        // iOS: pad the layout; Android: shrink height so inputs lift above the
+        // keyboard instead of being hidden underneath it.
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
         <View style={fm.header}>
           <Text style={fm.title}>
             {isEdit ? 'Edit Agreement' : 'New Agreement'}
           </Text>
-          <Pressable onPress={onClose} hitSlop={8}>
+          <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Close">
             <X size={20} color={C.textSecondary} />
           </Pressable>
         </View>
@@ -663,12 +673,7 @@ export default function AgreementsScreen() {
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={s.list}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
-            tintColor={C.primary}
-            colors={[C.primary]}
-          />
+          <AppRefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
         renderItem={({ item }) => (
           <AgreementCard agreement={item} onEdit={handleEdit} />

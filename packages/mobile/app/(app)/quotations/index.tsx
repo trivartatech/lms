@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  RefreshControl,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
@@ -24,6 +23,7 @@ import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { SearchBar } from '@/components/shared/SearchBar'
+import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
 import { api } from '@/lib/api'
 import type { Quotation, Addon } from '@lms/shared'
 
@@ -122,7 +122,7 @@ export default function QuotationsScreen() {
         data={filtered}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={s.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
+        refreshControl={<AppRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         renderItem={({ item: qt }) => {
           const entity = entityLabel(qt)
           return (
@@ -844,12 +844,12 @@ const ms = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 6,
-    backgroundColor: '#ede9fe',
+    backgroundColor: C.purpleLight,
     borderWidth: 1,
-    borderColor: '#c4b5fd',
+    borderColor: C.purple,
   },
-  typeBtnERP: { backgroundColor: C.primaryLight, borderColor: '#93c5fd' },
-  typeBtnText: { fontSize: 11, fontWeight: '700', color: '#6d28d9' },
+  typeBtnERP: { backgroundColor: C.primaryLight, borderColor: C.primary },
+  typeBtnText: { fontSize: 11, fontWeight: '700', color: C.purpleText },
   typeBtnTextERP: { color: C.primary },
   removeBtn: { padding: 6 },
   itemBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
@@ -928,10 +928,10 @@ const ms = StyleSheet.create({
   catalogItemPrice: { fontSize: 13, fontWeight: '700', color: C.primary },
   typePill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
   typePillERP: { backgroundColor: C.primaryLight },
-  typePillAddon: { backgroundColor: '#ede9fe' },
+  typePillAddon: { backgroundColor: C.purpleLight },
   typePillText: { fontSize: 10, fontWeight: '700' },
   typePillTextERP: { color: C.primary },
-  typePillTextAddon: { color: '#6d28d9' },
+  typePillTextAddon: { color: C.purpleText },
   pricingRow: { flexDirection: 'row', gap: 12 },
   pricingField: { flex: 1 },
   pricingLabel: { fontSize: 12, fontWeight: '600', color: C.textSecondary, marginBottom: 6 },

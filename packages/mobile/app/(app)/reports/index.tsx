@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  useWindowDimensions,
   Pressable,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -28,7 +27,7 @@ import type { SalesReport, ReferralReport } from '@lms/shared'
 // ─── Pipeline stage colors (same as dashboard) ────────────────────────────────
 
 const STAGE_CONFIG: Record<string, { color: string; label: string }> = {
-  NEW:         { color: '#64748b', label: 'New' },
+  NEW:         { color: C.slate, label: 'New' },
   QUALIFIED:   { color: C.primary, label: 'Qualified' },
   DEMO:        { color: C.purple, label: 'Demo' },
   PROPOSAL:    { color: C.warning, label: 'Proposal' },
@@ -85,8 +84,6 @@ function Divider() {
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function ReportsScreen() {
-  const { width } = useWindowDimensions()
-
   const {
     data: sales,
     isLoading: salesLoading,
@@ -107,9 +104,6 @@ export default function ReportsScreen() {
 
   const isLoading = salesLoading || referralsLoading
   const isError = salesError || referralsError
-
-  // Bar area width: screen - padding (32) - label col (104) - count col (44)
-  const barAreaWidth = width - 32 - 16 - 104 - 44
 
   if (isLoading) {
     return (
@@ -202,7 +196,9 @@ export default function ReportsScreen() {
             style={({ pressed }) => [styles.exportBtn, pressed && styles.exportBtnPressed]}
             onPress={exportSalesCSV}
             disabled={!sales || salespeople.length === 0}
-            hitSlop={6}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Export CSV"
           >
             <Download size={13} color={C.primary} />
             <Text style={styles.exportBtnText}>Export CSV</Text>
@@ -251,9 +247,9 @@ export default function ReportsScreen() {
                 color: C.textMuted,
                 label: item.stage,
               }
-              const barWidth =
+              const pct =
                 maxPipelineCount > 0
-                  ? (item.count / maxPipelineCount) * barAreaWidth
+                  ? Math.max((item.count / maxPipelineCount) * 100, 2)
                   : 0
               return (
                 <View key={item.stage} style={styles.barRow}>
@@ -265,7 +261,7 @@ export default function ReportsScreen() {
                       style={[
                         styles.bar,
                         {
-                          width: Math.max(barWidth, 4),
+                          width: `${pct}%`,
                           backgroundColor: cfg.color,
                         },
                       ]}
@@ -349,7 +345,9 @@ export default function ReportsScreen() {
             ]}
             onPress={exportReferralsCSV}
             disabled={!topReferrers.length}
-            hitSlop={6}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Export CSV"
           >
             <Download size={13} color={C.orange} />
             <Text style={[styles.exportBtnText, { color: C.orange }]}>Export CSV</Text>
