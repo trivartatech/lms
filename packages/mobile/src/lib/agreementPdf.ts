@@ -71,13 +71,15 @@ function esc(s: string): string {
 }
 
 function buildHtml(agreement: Agreement): string {
-  const value            = Number(agreement.value) || 0
+  const rawValue         = Number(agreement.value) || 0
   const totalStudents    = agreement.school?.totalStudents
-  const rate             = totalStudents && totalStudents > 0 ? Math.round(value / totalStudents) : 0
-  const advance          = Number(agreement.advancePayment) || 0
+  const hasStudents      = totalStudents != null && totalStudents > 0
+  const value            = hasStudents ? rawValue : 0
+  const rate             = hasStudents ? Math.round(rawValue / totalStudents!) : 0
+  const advance          = hasStudents ? Number(agreement.advancePayment) || 0 : 0
   const totalInstalments = agreement.totalInstalments || 0
-  const remaining        = Math.max(0, value - advance)
-  const instalmentAmt    = totalInstalments > 0 ? Math.round(remaining / totalInstalments) : 0
+  const remaining        = hasStudents ? Math.max(0, rawValue - advance) : 0
+  const instalmentAmt    = hasStudents && totalInstalments > 0 ? Math.round(remaining / totalInstalments) : 0
   const instRows         = totalInstalments > 0
     ? Array.from({ length: totalInstalments }, (_, i) => i + 1)
     : [1, 2, 3]
@@ -199,30 +201,30 @@ function buildHtml(agreement: Agreement): string {
     </table>
     <h3>2.3 Total Contract Value</h3>
     <table class="kv">
-      <tr><td>Total Agreement Value</td><td>${inr(value)}</td></tr>
+      <tr><td>Total Agreement Value</td><td>${hasStudents ? inr(value) : '₹________'}</td></tr>
     </table>
-    <div class="bluebox">(Rupees ${esc(numberToWords(value))} only)</div>
+    ${hasStudents ? `<div class="bluebox">(Rupees ${esc(numberToWords(value))} only)</div>` : ''}
   </section>
 
   <section class="keep">
     <h3>2.4 Payment Terms</h3>
     <p>The total contract value shall be paid in structured instalments as mutually agreed. The payment schedule is as follows:</p>
     <table class="kv">
-      <tr><td>Advance Payment (received)</td><td>${advance > 0 ? inr(advance) : '₹ —'}</td></tr>
-      <tr><td>Remaining Balance</td><td>${inr(remaining)}</td></tr>
+      <tr><td>Advance Payment (received)</td><td>${hasStudents ? (advance > 0 ? inr(advance) : '₹ —') : '₹________'}</td></tr>
+      <tr><td>Remaining Balance</td><td>${hasStudents ? inr(remaining) : '₹________'}</td></tr>
       <tr><td>Number of Instalments</td><td>${totalInstalments > 0 ? String(totalInstalments) : '—'}</td></tr>
-      ${totalInstalments > 0 ? `<tr><td>Amount per Instalment</td><td>${inr(instalmentAmt)}</td></tr>` : ''}
+      ${hasStudents && totalInstalments > 0 ? `<tr><td>Amount per Instalment</td><td>${inr(instalmentAmt)}</td></tr>` : ''}
     </table>
-    <div class="bluebox" style="margin-top:6px;">
+    ${hasStudents ? `<div class="bluebox" style="margin-top:6px;">
       ${advance > 0
         ? `Advance of ${inr(advance)} received. Remaining ${inr(remaining)} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ${inr(instalmentAmt)} each` : 'agreed instalments'}.`
         : `Full amount of ${inr(value)} payable in ${totalInstalments > 0 ? `${totalInstalments} instalment${totalInstalments > 1 ? 's' : ''} of ${inr(instalmentAmt)} each` : 'agreed instalments'}.`}
-    </div>
+    </div>` : ''}
   </section>
 
   <section class="keep">
     <h3>Balance Payment — Instalment Schedule</h3>
-    <p>The remaining balance of ${inr(remaining)} shall be collected in ${totalInstalments > 0 ? `${totalInstalments} equal instalment${totalInstalments > 1 ? 's' : ''}` : 'instalments'} as mutually agreed:</p>
+    <p>The remaining balance of ${hasStudents ? inr(remaining) : '₹________'} shall be collected in ${totalInstalments > 0 ? `${totalInstalments} equal instalment${totalInstalments > 1 ? 's' : ''}` : 'instalments'} as mutually agreed:</p>
     <table class="kv">
       ${instRows.map((i) => `<tr><td>Instalment ${i}</td><td>${instalmentAmt > 0 ? inr(instalmentAmt) : '₹________'}  on ________</td></tr>`).join('')}
     </table>
