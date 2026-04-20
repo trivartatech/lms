@@ -28,7 +28,11 @@
       "apiBaseUrl": "https://lms.trivarta.in/api",
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "1abaa2ca-b145-444d-a02c-ad6986db7f25"
       }
-    }
+    },
+    "owner": "trivarta"
   }
 }
