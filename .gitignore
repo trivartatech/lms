@@ -1,0 +1,22 @@
+node_modules/
+dist/
+build/
+.env
+*.env.local
+.expo/
+*.log
+.DS_Store
+coverage/
+
+# SQLite databases — never commit
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+
+# Local tunnel log
+.tunnel.log
+
+# Backend build output copied from web
+packages/backend/public/
+.github/workflows/

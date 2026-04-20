@@ -1,0 +1,14 @@
+{
+  "_comment": "Copy to app.json (or merge the `extra` block into your existing app.json) and set apiBaseUrl to your backend's LAN-reachable URL. Expo Go cannot reach localhost on the dev machine — use the host's LAN IP (e.g. 192.168.1.x) or an ngrok tunnel.",
+  "expo": {
+    "name": "LMS CRM",
+    "slug": "lms-crm",
+    "version": "1.0.0",
+    "extra": {
+      "apiBaseUrl": "http://192.168.1.x:3001/api",
+      "eas": {
+        "projectId": "your-eas-project-id-here"
+      }
+    }
+  }
+}

@@ -1,0 +1,324 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Role: ADMIN | SALES_MANAGER | SALES_EXECUTIVE
+// PipelineStage: NEW | QUALIFIED | DEMO | PROPOSAL | NEGOTIATION | CLOSED_WON | CLOSED_LOST
+// LeadStatus: NEW | IN_PROGRESS | CONVERTED | LOST
+// TaskType: CALL | MEETING | REMINDER
+// TaskStatus: PENDING | COMPLETED | CANCELLED
+// QuotationStatus: DRAFT | SENT | ACCEPTED | REJECTED
+// AgreementStatus: ACTIVE | EXPIRED | PENDING_RENEWAL
+// BonusType: FIXED | PERCENTAGE
+// PayoutStatus: PENDING | PAID
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         String   @default("SALES_EXECUTIVE")
+  // Expo push token for mobile notifications (nullable)
+  pushToken    String?  @map("push_token")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  assignedLeads   Lead[]   @relation("AssignedLeads")
+  assignedSchools School[] @relation("AssignedSchools")
+  tasks           Task[]
+  timelineEvents  TimelineEvent[]
+  refreshTokens   RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  // Hashed token (sha256) — never store raw
+  tokenHash  String   @unique @map("token_hash")
+  userId     Int      @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  // When rotated, replaced by the newly issued token id (chain for audit)
+  replacedById Int?     @map("replaced_by_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Lead {
+  id            Int      @id @default(autoincrement())
+  schoolName    String   @map("school_name")
+  contactPerson String   @map("contact_person")
+  phone         String
+  email         String?
+  location      String?
+  status        String   @default("NEW")
+  pipelineStage String   @default("NEW") @map("pipeline_stage")
+  notes         String?
+
+  assignedToId Int?  @map("assigned_to")
+  assignedTo   User? @relation("AssignedLeads", fields: [assignedToId], references: [id])
+
+  referredBySchoolId Int?    @map("referred_by_school_id")
+  referredBySchool   School? @relation("ReferredLeads", fields: [referredBySchoolId], references: [id])
+  referralNotes      String? @map("referral_notes")
+
+  referredByLeadId Int?  @map("referred_by_lead_id")
+  referredByLead   Lead? @relation("LeadReferrals", fields: [referredByLeadId], references: [id])
+  referredLeads    Lead[] @relation("LeadReferrals")
+
+  totalStudents Int? @map("total_students")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  quotations        Quotation[]
+  tasks             Task[]
+  timelineEvents    TimelineEvent[]
+  referralIncentive ReferralIncentive?
+  convertedSchool   School?            @relation("ConvertedFromLead")
+  addons            SchoolAddon[]
+  contacts          Contact[]
+
+  @@index([assignedToId])
+  @@index([pipelineStage])
+  @@index([status])
+  @@index([referredBySchoolId])
+  @@index([createdAt])
+  @@map("leads")
+}
+
+model Contact {
+  id          Int     @id @default(autoincrement())
+  name        String
+  phone       String
+  email       String?
+  designation String?
+  isPrimary   Boolean @default(false) @map("is_primary")
+
+  schoolId Int?    @map("school_id")
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  leadId Int?  @map("lead_id")
+  lead   Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([schoolId])
+  @@index([leadId])
+  @@map("contacts")
+}
+
+model School {
+  id            Int     @id @default(autoincrement())
+  name          String
+  contactPerson String  @map("contact_person")
+  phone         String
+  email         String?
+  location      String?
+  notes         String?
+
+  assignedToId Int?  @map("assigned_to_id")
+  assignedTo   User? @relation("AssignedSchools", fields: [assignedToId], references: [id])
+
+  referredBySchoolId Int?     @map("referred_by_school_id")
+  referredBySchool   School?  @relation("SchoolReferrals", fields: [referredBySchoolId], references: [id])
+  referredSchools    School[] @relation("SchoolReferrals")
+
+  createdFromLeadId Int?  @unique @map("created_from_lead_id")
+  createdFromLead   Lead? @relation("ConvertedFromLead", fields: [createdFromLeadId], references: [id])
+
+  totalStudents Int? @map("total_students")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  referredLeads             Lead[]              @relation("ReferredLeads")
+  quotations                Quotation[]
+  agreements                Agreement[]
+  schoolAddons              SchoolAddon[]
+  tasks                     Task[]
+  timelineEvents            TimelineEvent[]
+  contacts                  Contact[]
+  referralIncentivesGiven   ReferralIncentive[] @relation("ReferringSchool")
+  referralIncentiveReceived ReferralIncentive?  @relation("ConvertedSchool")
+
+  @@index([assignedToId])
+  @@index([referredBySchoolId])
+  @@index([createdAt])
+  @@map("schools")
+}
+
+model Quotation {
+  id       Int     @id @default(autoincrement())
+  leadId   Int?    @map("lead_id")
+  lead     Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  schoolId Int?    @map("school_id")
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  subtotal Decimal
+  discount Decimal @default(0)
+  tax      Decimal @default(0)
+  total    Decimal
+  status   String  @default("DRAFT")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items QuotationItem[]
+
+  @@index([leadId])
+  @@index([schoolId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id          Int       @id @default(autoincrement())
+  quotationId Int       @map("quotation_id")
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  name        String
+  type        String
+  quantity    Int       @default(1)
+  unitPrice   Decimal   @map("unit_price")
+  total       Decimal
+
+  @@index([quotationId])
+  @@map("quotation_items")
+}
+
+model Agreement {
+  id          Int      @id @default(autoincrement())
+  schoolId    Int      @map("school_id")
+  school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  renewalDate DateTime? @map("renewal_date")
+  status           String  @default("ACTIVE")
+  value            Decimal
+  advancePayment   Decimal @default(0) @map("advance_payment")
+  totalInstalments Int     @default(0) @map("total_instalments")
+  notes            String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([schoolId])
+  @@index([status])
+  @@index([endDate])
+  @@map("agreements")
+}
+
+model Addon {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String?
+  price       Decimal
+  category    String  @default("ADDON")
+  tiers       String? // JSON: [{label,maxStudents,price}]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  schoolAddons SchoolAddon[]
+
+  @@map("addons")
+}
+
+model SchoolAddon {
+  id        Int      @id @default(autoincrement())
+  schoolId  Int?     @map("school_id")
+  school    School?  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  leadId    Int?     @map("lead_id")
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  addonId   Int      @map("addon_id")
+  addon     Addon    @relation(fields: [addonId], references: [id])
+  price     Decimal
+  startDate DateTime @map("start_date")
+
+  @@index([schoolId])
+  @@index([leadId])
+  @@index([addonId])
+  @@map("school_addons")
+}
+
+model ReferralIncentive {
+  id                   Int      @id @default(autoincrement())
+  referringSchoolId    Int      @map("referring_school_id")
+  referringSchool      School   @relation("ReferringSchool", fields: [referringSchoolId], references: [id], onDelete: Cascade)
+  leadId               Int      @unique @map("lead_id")
+  lead                 Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  convertedSchoolId    Int?     @unique @map("converted_school_id")
+  convertedSchool      School?  @relation("ConvertedSchool", fields: [convertedSchoolId], references: [id])
+  bonusType            String   @map("bonus_type")
+  bonusValue           Decimal  @map("bonus_value")
+  calculatedCommission Decimal? @map("calculated_commission")
+  payoutStatus         String   @default("PENDING") @map("payout_status")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([referringSchoolId])
+  @@index([payoutStatus])
+  @@map("referral_incentives")
+}
+
+model Task {
+  id      Int      @id @default(autoincrement())
+  title   String
+  type    String
+  dueDate DateTime @map("due_date")
+  status  String   @default("PENDING")
+  notes   String?
+  // Set when the task is sent to Expo push — prevents duplicate reminders.
+  reminderSentAt DateTime? @map("reminder_sent_at")
+
+  assignedToId Int?    @map("assigned_to")
+  assignedTo   User?   @relation(fields: [assignedToId], references: [id])
+  leadId       Int?    @map("lead_id")
+  lead         Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  schoolId     Int?    @map("school_id")
+  school       School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([assignedToId])
+  @@index([dueDate])
+  @@index([status])
+  @@index([leadId])
+  @@index([schoolId])
+  @@map("tasks")
+}
+
+model TimelineEvent {
+  id          Int     @id @default(autoincrement())
+  leadId      Int?    @map("lead_id")
+  lead        Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  schoolId    Int?    @map("school_id")
+  school      School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  eventType   String  @map("event_type")
+  description String
+  createdById Int?    @map("created_by")
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
+  // Field-level audit diff (JSON-stringified). Shape: { field: { before, after } }
+  // Optional: only set for UPDATE events. Keeps the table compact for simple logs.
+  diff String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@index([schoolId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("timeline_events")
+}
