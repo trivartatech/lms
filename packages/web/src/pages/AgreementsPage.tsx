@@ -10,6 +10,7 @@ import { AgreementFormDialog } from '@/components/agreements/AgreementFormDialog
 import { TableSkeleton } from '@/components/ui/skeleton'
 import type { Agreement } from '@lms/shared'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { toast } from '@/lib/toast-store'
 
 function calcDuration(start?: string | null, end?: string | null) {
   if (!start || !end) return 1
@@ -37,7 +38,7 @@ export function AgreementsPage() {
       await downloadAgreementPDF(agreement)
     } catch (err: any) {
       console.error('Failed to generate PDF:', err)
-      alert(`PDF generation failed:\n${err?.message ?? String(err)}`)
+      toast.error(err?.message ?? String(err), 'PDF generation failed')
     } finally {
       setDownloadingId(null)
     }

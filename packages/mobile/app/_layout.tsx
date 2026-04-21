@@ -10,7 +10,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { useAuthStore } from '../src/store/auth.store'
 import { setupOnlineManager } from '../src/lib/online-manager'
 import { registerMutationDefaults } from '../src/lib/mutation-defaults'
-import { syncPushTokenWithBackend } from '../src/lib/push-notifications'
+import {
+  syncPushTokenWithBackend,
+  configureNotificationHandler,
+  attachNotificationTapListener,
+} from '../src/lib/push-notifications'
 
 const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl ?? 'http://localhost:3001/api'
 
@@ -47,6 +51,10 @@ const persister = createAsyncStoragePersister({
 // NetInfo → onlineManager + AppState → focusManager. Safe at module scope —
 // subscribes once for the app lifetime.
 setupOnlineManager()
+
+// Make foreground pushes show their banner/play sound. Without this, iOS and
+// Android drop notifications while the app is in the foreground.
+configureNotificationHandler()
 
 // Register mutationFns for offline-capable mutations. MUST happen before
 // <PersistQueryClientProvider> rehydrates — otherwise rehydrated paused
@@ -119,6 +127,13 @@ function InitialLayout() {
     if (!user) return
     syncPushTokenWithBackend()
   }, [user?.id])
+
+  // Deep-link on notification tap (foreground, background, or cold-start).
+  // Detach on unmount so hot reloads don't stack duplicate listeners.
+  useEffect(() => {
+    const detach = attachNotificationTapListener(router)
+    return () => detach()
+  }, [router])
 
   // Guard: redirect based on auth state. Wait until we've attempted to
   // restore the session (hydrated) so we don't bounce the user to /login

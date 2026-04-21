@@ -2,6 +2,24 @@ import { prisma } from '../config/prisma'
 import { pushService } from '../services/push.service'
 
 /**
+ * Format "due in X" as a timezone-agnostic relative string. We used to embed
+ * `dueDate.toLocaleString()` which formats in the *server's* timezone — so a
+ * user in IST whose task is due at 18:00 local saw a notification claiming it
+ * was due at 12:30 (UTC server). Relative phrasing sidesteps the TZ problem
+ * entirely.
+ */
+function formatDueIn(dueDate: Date, now: Date): string {
+  const diffMs = dueDate.getTime() - now.getTime()
+  if (diffMs <= 0) return 'now'
+  const mins = Math.round(diffMs / 60_000)
+  if (mins < 60) return `in ${mins} min`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `in ${hours}h`
+  const days = Math.round(hours / 24)
+  return `in ${days}d`
+}
+
+/**
  * Find every PENDING task that's due within the next 24 hours,
  * owned by a user with a registered push token, and not already notified.
  * Send Expo push notifications and mark reminderSentAt.
@@ -35,7 +53,7 @@ export async function runTaskReminders() {
         to: token,
         sound: 'default' as const,
         title: `Reminder: ${t.title}`,
-        body: `${subject} — due ${t.dueDate.toLocaleString()}`,
+        body: `${subject} — due ${formatDueIn(t.dueDate, now)}`,
         data: { taskId: t.id, leadId: t.leadId, schoolId: t.schoolId },
       }
     })

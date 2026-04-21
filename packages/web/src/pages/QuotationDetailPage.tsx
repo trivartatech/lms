@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 // QuotationPDF is lazy-loaded on demand to avoid crashing the app on startup
 import type { Quotation, QuotationStatus } from '@lms/shared'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { toast } from '@/lib/toast-store'
 
 const statusVariant: Record<QuotationStatus, string> = {
   DRAFT: 'secondary',
@@ -79,7 +80,7 @@ export function QuotationDetailPage() {
     } catch (err: any) {
       console.error('PDF generation failed:', err)
       const msg = err?.message ?? String(err)
-      alert(`PDF generation failed:\n${msg}\n\nFalling back to print.`)
+      toast.error(`${msg}. Falling back to print.`, 'PDF generation failed')
       window.print()
     } finally {
       setPdfLoading(false)

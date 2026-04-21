@@ -15,18 +15,54 @@ import { api } from './api'
  */
 
 let cachedToken: string | null = null
+let handlerConfigured = false
+let responseSub: { remove: () => void } | null = null
+
+function loadNotifications(): any | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('expo-notifications')
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Configure how notifications behave when received while the app is in the
+ * foreground. Without this, iOS/Android silently swallow foreground pushes —
+ * the user hears/sees nothing until they background the app.
+ *
+ * Safe to call multiple times; we guard with `handlerConfigured`.
+ */
+export function configureNotificationHandler() {
+  if (handlerConfigured) return
+  const Notifications = loadNotifications()
+  if (!Notifications) return
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  })
+  handlerConfigured = true
+}
 
 export async function registerForPushAsync(): Promise<string | null> {
   if (cachedToken) return cachedToken
   if (Platform.OS === 'web') return null
 
-  let Notifications: any, Device: any
+  const Notifications = loadNotifications()
+  let Device: any
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    Notifications = require('expo-notifications')
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     Device = require('expo-device')
   } catch {
+    Device = null
+  }
+  if (!Notifications || !Device) {
     console.warn('[push] expo-notifications / expo-device not installed — skipping registration')
     return null
   }
@@ -83,5 +119,55 @@ export async function clearPushTokenOnLogout() {
     await api.delete('/users/me/push-token')
   } catch {
     // best-effort
+  }
+}
+
+/**
+ * Attach a tap-to-deep-link listener. When the user taps a notification, we
+ * route to the most specific entity on the payload: taskId > leadId > schoolId.
+ *
+ * Pass an expo-router `router` instance; we call `router.push(...)`. Returns a
+ * cleanup fn. Safe to call multiple times — we always remove the prior sub
+ * first so you don't double-route on hot reload.
+ */
+export function attachNotificationTapListener(router: { push: (href: string) => void }) {
+  const Notifications = loadNotifications()
+  if (!Notifications) return () => {}
+
+  if (responseSub) {
+    responseSub.remove()
+    responseSub = null
+  }
+
+  const handle = (response: any) => {
+    const data = response?.notification?.request?.content?.data ?? {}
+    if (data?.taskId) {
+      router.push('/(app)/tasks')
+      return
+    }
+    if (data?.leadId) {
+      router.push(`/(app)/leads/${data.leadId}`)
+      return
+    }
+    if (data?.schoolId) {
+      router.push(`/(app)/schools/${data.schoolId}`)
+    }
+  }
+
+  responseSub = Notifications.addNotificationResponseReceivedListener(handle)
+
+  // If the app was launched cold by a notification tap, the listener above
+  // fires too late — expo stashes that initial response for us to pick up.
+  Notifications.getLastNotificationResponseAsync?.()
+    .then((response: any) => {
+      if (response) handle(response)
+    })
+    .catch(() => {})
+
+  return () => {
+    if (responseSub) {
+      responseSub.remove()
+      responseSub = null
+    }
   }
 }

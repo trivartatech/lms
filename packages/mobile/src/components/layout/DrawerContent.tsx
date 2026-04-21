@@ -8,6 +8,7 @@ import {
 import { C } from '@/lib/colors'
 import { getInitials } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth.store'
+import { clearPushTokenOnLogout } from '@/lib/push-notifications'
 
 const NAV_ITEMS = [
   { label: 'Dashboard',      icon: LayoutDashboard, route: '/(app)' as const },
@@ -38,8 +39,13 @@ export function DrawerContent(props: DrawerContentComponentProps) {
     router.push(route as never)
   }
 
-  function handleLogout() {
+  async function handleLogout() {
     props.navigation.closeDrawer()
+    // Clear push token BEFORE logout so the DELETE call still carries a valid
+    // access token. Best-effort — if it fails (offline, 401) we still log out
+    // locally; the stale token on the server will get cleaned up when the
+    // backend next hits DeviceNotRegistered during a push send.
+    await clearPushTokenOnLogout()
     logout()
   }
 
