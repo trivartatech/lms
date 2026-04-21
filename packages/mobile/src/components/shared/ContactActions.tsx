@@ -13,9 +13,19 @@ import { C } from '../../lib/colors'
  * (or browser/business app).
  */
 
-/** Strip spaces / dashes / plus / parens — WhatsApp wants digits only. */
+/**
+ * Strip non-digits and ensure a country-code prefix. WhatsApp requires a full
+ * international number — a bare 10-digit Indian number like "9876543210" opens
+ * wa.me to an error page. Default to India (91) when we see a 10-digit number
+ * with no existing country code.
+ */
 function normalizePhone(phone: string): string {
-  return phone.replace(/[^\d]/g, '')
+  const digits = phone.replace(/\D/g, '')
+  if (!digits) return ''
+  // Already has country code (11+ digits, or starts with a known long prefix)
+  if (digits.length >= 11) return digits
+  if (digits.length === 10) return '91' + digits
+  return digits
 }
 
 async function openWhatsApp(phone: string) {

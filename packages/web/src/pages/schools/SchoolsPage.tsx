@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { SchoolFormDialog } from '@/components/schools/SchoolFormDialog'
 import type { School as SchoolType } from '@lms/shared'
-import { formatDate } from '@/lib/utils'
+import { formatDate, waLink } from '@/lib/utils'
 
 interface PaginatedSchools { data: SchoolType[]; total: number }
 
@@ -71,7 +71,7 @@ export function SchoolsPage() {
                         <a href={`tel:+91${school.phone.replace(/\D/g, '')}`} title="Call" className="text-blue-600 hover:opacity-70" onClick={(e) => e.stopPropagation()}>
                           <PhoneCall className="h-3 w-3" />
                         </a>
-                        <a href={`https://wa.me/91${school.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-green-600 hover:opacity-70" onClick={(e) => e.stopPropagation()}>
+                        <a href={waLink(school.phone)} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-green-600 hover:opacity-70" onClick={(e) => e.stopPropagation()}>
                           <MessageCircle className="h-3 w-3" />
                         </a>
                       </div>

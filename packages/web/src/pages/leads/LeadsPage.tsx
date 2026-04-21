@@ -13,6 +13,7 @@ import { LeadFormDialog } from '@/components/leads/LeadFormDialog'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { useAuthStore } from '@/store/auth.store'
 import type { Lead, PaginatedLeads } from '@lms/shared'
+import { waLink } from '@/lib/utils'
 import { formatDate } from '@/lib/utils'
 
 const PIPELINE_STAGES = ['NEW', 'QUALIFIED', 'DEMO', 'PROPOSAL', 'NEGOTIATION', 'CLOSED_WON', 'CLOSED_LOST']
@@ -304,7 +305,7 @@ export function LeadsPage() {
                       <a href={`tel:+91${lead.phone.replace(/\D/g, '')}`} title="Call" className="text-blue-600 hover:opacity-70">
                         <PhoneCall className="h-3.5 w-3.5" />
                       </a>
-                      <a href={`https://wa.me/91${lead.phone.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-green-600 hover:opacity-70">
+                      <a href={waLink(lead.phone)} target="_blank" rel="noopener noreferrer" title="WhatsApp" className="text-green-600 hover:opacity-70">
                         <MessageCircle className="h-3.5 w-3.5" />
                       </a>
                     </div>

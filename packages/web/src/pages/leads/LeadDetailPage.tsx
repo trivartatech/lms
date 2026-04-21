@@ -15,7 +15,7 @@ import { AddOnsTab } from '@/components/schools/tabs/AddOnsTab'
 import { LeadReferralsTab } from '@/components/leads/LeadReferralsTab'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Lead, TimelineEvent, Task } from '@lms/shared'
-import { formatDate, formatDateTime } from '@/lib/utils'
+import { formatDate, formatDateTime, waLink } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth.store'
 
 const statusVariant: Record<string, any> = {
@@ -126,7 +126,7 @@ export function LeadDetailPage() {
                     <PhoneCall className="h-4 w-4" />
                   </a>
                   <a
-                    href={`https://wa.me/91${lead.phone.replace(/\D/g, '')}`}
+                    href={waLink(lead.phone)}
                     target="_blank"
                     rel="noopener noreferrer"
                     title="WhatsApp"

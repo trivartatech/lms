@@ -2,7 +2,7 @@ import { Phone, Mail, MapPin, User, GitBranch, Users, MessageCircle, PhoneCall, 
 import { Link } from 'react-router-dom'
 import type { School } from '@lms/shared'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { formatDate } from '@/lib/utils'
+import { formatDate, waLink } from '@/lib/utils'
 
 interface Props {
   school: School
@@ -25,7 +25,7 @@ export function OverviewTab({ school, onEdit }: Props) {
               <PhoneCall className="h-4 w-4" />
             </a>
             <a
-              href={`https://wa.me/91${school.phone.replace(/\D/g, '')}`}
+              href={waLink(school.phone)}
               target="_blank"
               rel="noopener noreferrer"
               title="WhatsApp"

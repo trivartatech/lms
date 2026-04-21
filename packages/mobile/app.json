@@ -36,7 +36,8 @@
           "defaultChannel": "default"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "./plugins/withExternalAppQueries"
     ],
     "extra": {
       "apiBaseUrl": "https://lms.trivarta.in/api",
