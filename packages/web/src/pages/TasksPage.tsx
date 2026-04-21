@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, CheckCircle, Phone, Users, Bell } from 'lucide-react'
+import { Plus, CheckCircle, Phone, Users, Bell, CalendarClock } from 'lucide-react'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { TaskFormDialog } from '@/components/tasks/TaskFormDialog'
+import { RescheduleTaskDialog } from '@/components/tasks/RescheduleTaskDialog'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import type { Task } from '@lms/shared'
 import { formatDate } from '@/lib/utils'
@@ -21,6 +22,7 @@ const typeIcon: Record<string, any> = {
 export function TasksPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
+  const [rescheduleTask, setRescheduleTask] = useState<Task | null>(null)
 
   const { data: tasks, isLoading } = useQuery<Task[]>({
     queryKey: ['tasks'],
@@ -70,15 +72,29 @@ export function TasksPage() {
                   <div className="flex items-center gap-2">
                     <Badge variant={statusVariant[task.status]}>{task.status}</Badge>
                     {task.status === 'PENDING' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-green-600 h-7 px-2"
-                        onClick={() => completeMutation.mutate(task.id)}
-                        disabled={completeMutation.isPending}
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                      </Button>
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-blue-600 h-7 px-2"
+                          onClick={() => setRescheduleTask(task)}
+                          title="Reschedule"
+                          aria-label="Reschedule task"
+                        >
+                          <CalendarClock className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-green-600 h-7 px-2"
+                          onClick={() => completeMutation.mutate(task.id)}
+                          disabled={completeMutation.isPending}
+                          title="Mark complete"
+                          aria-label="Mark task complete"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
                   </div>
                 </CardContent>
@@ -100,6 +116,11 @@ export function TasksPage() {
           queryClient.invalidateQueries({ queryKey: ['tasks'] })
           setShowForm(false)
         }}
+      />
+
+      <RescheduleTaskDialog
+        task={rescheduleTask}
+        onClose={() => setRescheduleTask(null)}
       />
     </div>
   )

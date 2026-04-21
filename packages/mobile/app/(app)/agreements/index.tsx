@@ -23,6 +23,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { SearchBar } from '@/components/shared/SearchBar'
 import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
+import { DatePickerField } from '@/components/shared/DatePickerField'
 import { api } from '@/lib/api'
 import { downloadAgreementPDF } from '@/lib/agreementPdf'
 import type { Agreement, AgreementStatus, School } from '@lms/shared'
@@ -424,15 +425,12 @@ function AgreementFormModal({
 
           {/* Start date */}
           <View style={fm.field}>
-            <Text style={fm.label}>Start Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={fm.input}
+            <Text style={fm.label}>Start Date</Text>
+            <DatePickerField
               value={form.startDate}
-              onChangeText={(v) => set('startDate', v)}
-              placeholder="2024-01-01"
-              placeholderTextColor={C.textMuted}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
+              onChange={(v) => set('startDate', v)}
+              placeholder="Select start date"
+              accessibilityLabel="Agreement start date"
             />
           </View>
 

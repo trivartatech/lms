@@ -1,12 +1,14 @@
 import { Router } from 'express'
 import { schoolsController } from '../controllers/schools.controller'
 import { authenticate } from '../middleware/auth.middleware'
+import { idempotency } from '../middleware/idempotency.middleware'
 import { validate } from '../middleware/validate.middleware'
 import { schoolListQuerySchema } from '../validators/queries'
 
 const router = Router()
 
 router.use(authenticate)
+router.use(idempotency)
 
 router.get('/', validate(schoolListQuerySchema, 'query'), schoolsController.getAll)
 router.post('/', schoolsController.create)

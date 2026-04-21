@@ -3,6 +3,7 @@ import { Pressable, View, Text, StyleSheet } from 'react-native'
 import { Bell } from 'lucide-react-native'
 import { useQuery } from '@tanstack/react-query'
 import { DrawerContent } from '@/components/layout/DrawerContent'
+import { OfflineStatusPill } from '@/components/shared/OfflineStatusPill'
 import { C } from '@/lib/colors'
 import { useAuthStore } from '@/store/auth.store'
 import { api } from '@/lib/api'
@@ -18,6 +19,7 @@ function HeaderRight() {
 
   return (
     <View style={s.headerRight}>
+      <OfflineStatusPill />
       <View>
         <Bell size={22} color={C.textSecondary} />
         {count > 0 && (
@@ -57,7 +59,11 @@ export default function AppLayout() {
 }
 
 const s = StyleSheet.create({
-  headerRight: { marginRight: 16 },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
   badge: {
     position: 'absolute',
     top: -4,

@@ -299,6 +299,27 @@ model Task {
   @@map("tasks")
 }
 
+/// Short-lived store for idempotent POST/PUT/DELETE replays from offline mobile clients.
+/// Client sends a UUID `Idempotency-Key` header; we cache the response body + status
+/// for 24h so a duplicate request (queue replay after a flaky network) returns the
+/// original response instead of creating a second record.
+model IdempotencyKey {
+  id         Int      @id @default(autoincrement())
+  /// Scoped per-user so two users can't collide. We index on (userId, key) for fast lookup.
+  userId     Int      @map("user_id")
+  key        String
+  method     String
+  path       String
+  status     Int
+  response   String   /// JSON-stringified response body
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, key])
+  @@index([expiresAt])
+  @@map("idempotency_keys")
+}
+
 model TimelineEvent {
   id          Int     @id @default(autoincrement())
   leadId      Int?    @map("lead_id")

@@ -1,12 +1,14 @@
 import { Router } from 'express'
 import { agreementsController } from '../controllers/agreements.controller'
 import { authenticate } from '../middleware/auth.middleware'
+import { idempotency } from '../middleware/idempotency.middleware'
 import { validate } from '../middleware/validate.middleware'
 import { agreementListQuerySchema } from '../validators/queries'
 
 const router = Router()
 
 router.use(authenticate)
+router.use(idempotency)
 
 router.get('/', validate(agreementListQuerySchema, 'query'), agreementsController.getAll)
 router.post('/', agreementsController.create)

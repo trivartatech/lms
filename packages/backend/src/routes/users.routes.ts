@@ -1,11 +1,13 @@
 import { Router } from 'express'
 import { usersController } from '../controllers/users.controller'
 import { authenticate } from '../middleware/auth.middleware'
+import { idempotency } from '../middleware/idempotency.middleware'
 import { requireRole } from '../middleware/rbac.middleware'
 
 const router = Router()
 
 router.use(authenticate)
+router.use(idempotency)
 
 router.get('/', usersController.getAll)
 router.put('/me/password', usersController.changePassword)

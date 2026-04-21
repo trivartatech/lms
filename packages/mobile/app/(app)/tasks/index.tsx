@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useOfflineMutation } from '@/hooks/useOfflineMutation'
 import { useRouter } from 'expo-router'
 import {
   Phone,
@@ -24,6 +25,7 @@ import {
   Plus,
   ChevronDown,
   X,
+  CalendarClock,
 } from 'lucide-react-native'
 import { C } from '@/lib/colors'
 import { formatDate, todayISO } from '@/lib/utils'
@@ -33,6 +35,7 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { ConfirmModal } from '@/components/shared/ConfirmModal'
 import { AppRefreshControl } from '@/components/shared/AppRefreshControl'
 import { SearchBar } from '@/components/shared/SearchBar'
+import { DatePickerField } from '@/components/shared/DatePickerField'
 import { api } from '@/lib/api'
 import type { Task, TaskType, UserSummary } from '@lms/shared'
 
@@ -96,9 +99,11 @@ const ti = StyleSheet.create({
 function TaskCard({
   task,
   onComplete,
+  onReschedule,
 }: {
   task: Task
   onComplete: (task: Task) => void
+  onReschedule: (task: Task) => void
 }) {
   const router = useRouter()
   const isCompleted = task.status === 'COMPLETED'
@@ -129,13 +134,24 @@ function TaskCard({
         </View>
 
         {isPending && (
-          <Pressable
-            style={({ pressed }) => [s.completeBtn, pressed && s.completeBtnPressed]}
-            onPress={() => onComplete(task)}
-            hitSlop={6}
-          >
-            <CheckCircle size={28} color={C.success} />
-          </Pressable>
+          <View style={s.actionCol}>
+            <Pressable
+              style={({ pressed }) => [s.completeBtn, pressed && s.completeBtnPressed]}
+              onPress={() => onComplete(task)}
+              hitSlop={8}
+              accessibilityLabel="Mark task complete"
+            >
+              <CheckCircle size={28} color={C.success} />
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [s.rescheduleBtn, pressed && s.rescheduleBtnPressed]}
+              onPress={() => onReschedule(task)}
+              hitSlop={8}
+              accessibilityLabel="Reschedule task"
+            >
+              <CalendarClock size={20} color={C.primary} />
+            </Pressable>
+          </View>
         )}
       </View>
 
@@ -430,15 +446,12 @@ function TaskFormModal({
 
           {/* Due date */}
           <View style={tfm.field}>
-            <Text style={tfm.label}>Due Date (YYYY-MM-DD) *</Text>
-            <TextInput
-              style={tfm.input}
+            <Text style={tfm.label}>Due Date *</Text>
+            <DatePickerField
               value={form.dueDate}
-              onChangeText={(v) => set('dueDate', v)}
-              placeholder="2024-06-15"
-              placeholderTextColor={C.textMuted}
-              keyboardType="numbers-and-punctuation"
-              maxLength={10}
+              onChange={(v) => set('dueDate', v)}
+              placeholder="Select due date"
+              accessibilityLabel="Due date"
             />
           </View>
 
@@ -527,6 +540,212 @@ function TaskFormModal({
   )
 }
 
+// ─── Reschedule modal ─────────────────────────────────────────────────────────
+
+function RescheduleModal({
+  task,
+  onClose,
+  onSuccess,
+}: {
+  task: Task | null
+  onClose: () => void
+  onSuccess: () => void
+}) {
+  const queryClient = useQueryClient()
+  const [newDate, setNewDate] = useState('')
+
+  // Seed the picker with the task's current due date whenever a new task is
+  // targeted — we read the YYYY-MM-DD portion so no timezone shift.
+  const visible = task !== null
+  const seeded = useMemo(() => {
+    if (!task?.dueDate) return ''
+    return new Date(task.dueDate).toISOString().slice(0, 10)
+  }, [task?.id, task?.dueDate])
+
+  // Reset scratch value when the modal opens/closes or target task changes.
+  useEffect(() => {
+    if (visible) setNewDate(seeded)
+    else setNewDate('')
+  }, [visible, seeded])
+
+  // Offline-capable: registered in mutation-defaults as ['tasks', 'reschedule'].
+  // While offline, this mutation pauses in the cache and replays when NetInfo
+  // flips back to online. The backend idempotency middleware dedupes replays
+  // by the Idempotency-Key header stamped into variables.
+  const mutation = useOfflineMutation<unknown, Error, { id: number; dueDate: string }>({
+    mutationKey: ['tasks', 'reschedule'],
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      onSuccess()
+    },
+    // Fires only for errors surfaced while the component is still mounted
+    // (i.e. the mutation actually ran and the server returned non-2xx). If
+    // the app is offline the mutation pauses silently — no error alert.
+    onError: () => Alert.alert('Error', 'Failed to reschedule task.'),
+  })
+
+  const handleSave = () => {
+    if (!task) return
+    if (!newDate) {
+      Alert.alert('Required', 'Pick a new due date.')
+      return
+    }
+    if (newDate === seeded) {
+      onClose()
+      return
+    }
+    mutation.mutate({ id: task.id, dueDate: newDate })
+    // Close immediately: if offline, the mutation is safely queued; the
+    // OfflineStatusPill in the header reflects the pending count.
+    onClose()
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={rs.backdrop} onPress={onClose}>
+        <Pressable style={rs.sheet} onPress={() => {}}>
+          <View style={rs.header}>
+            <Text style={rs.title}>Reschedule Task</Text>
+            <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="Close">
+              <X size={20} color={C.textSecondary} />
+            </Pressable>
+          </View>
+
+          {task && (
+            <View style={rs.body}>
+              <Text style={rs.taskTitle} numberOfLines={2}>{task.title}</Text>
+              <Text style={rs.currentDue}>
+                Currently due: <Text style={rs.currentDueValue}>{formatDate(task.dueDate)}</Text>
+              </Text>
+
+              <Text style={rs.label}>New due date</Text>
+              <DatePickerField
+                value={newDate}
+                onChange={setNewDate}
+                placeholder="Select new due date"
+                accessibilityLabel="New due date"
+              />
+            </View>
+          )}
+
+          <View style={rs.actions}>
+            <Pressable
+              onPress={onClose}
+              style={[rs.btn, rs.btnGhost]}
+              disabled={mutation.isPending}
+            >
+              <Text style={rs.btnGhostText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleSave}
+              style={[rs.btn, rs.btnPrimary, mutation.isPending && rs.btnDisabled]}
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={rs.btnPrimaryText}>Save</Text>
+              )}
+            </Pressable>
+          </View>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  )
+}
+
+const rs = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  sheet: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: C.surface,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: C.border,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: C.text,
+  },
+  body: {
+    padding: 16,
+    gap: 4,
+  },
+  taskTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: C.text,
+    marginBottom: 4,
+  },
+  currentDue: {
+    fontSize: 13,
+    color: C.textSecondary,
+    marginBottom: 16,
+  },
+  currentDueValue: {
+    fontWeight: '600',
+    color: C.text,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: C.text,
+    marginBottom: 6,
+  },
+  actions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.border,
+    backgroundColor: C.grayLight,
+  },
+  btn: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 8,
+    minWidth: 88,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnGhost: {
+    backgroundColor: 'transparent',
+  },
+  btnGhostText: {
+    color: C.textSecondary,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  btnPrimary: {
+    backgroundColor: C.primary,
+  },
+  btnPrimaryText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  btnDisabled: {
+    opacity: 0.7,
+  },
+})
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function TasksScreen() {
@@ -535,21 +754,23 @@ export default function TasksScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('ALL')
   const [showForm, setShowForm] = useState(false)
   const [confirmTask, setConfirmTask] = useState<Task | null>(null)
+  const [rescheduleTask, setRescheduleTask] = useState<Task | null>(null)
 
   const { data: tasks, isLoading, isRefetching, refetch } = useQuery<Task[]>({
     queryKey: ['tasks'],
     queryFn: () => api.get('/tasks').then((r) => r.data),
   })
 
-  const completeMutation = useMutation({
-    mutationFn: (id: number) =>
-      api.put(`/tasks/${id}`, { status: 'COMPLETED' }),
+  // Offline-capable: registered in mutation-defaults as ['tasks', 'complete'].
+  // Pauses while offline and replays on reconnect. Variables are an object
+  // (not a bare number) so useOfflineMutation can stamp the idempotency key
+  // into them for stable replay.
+  const completeMutation = useOfflineMutation<unknown, Error, { id: number }>({
+    mutationKey: ['tasks', 'complete'],
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] })
-      setConfirmTask(null)
     },
     onError: () => {
-      setConfirmTask(null)
       Alert.alert('Error', 'Failed to mark task as complete.')
     },
   })
@@ -608,7 +829,11 @@ export default function TasksScreen() {
           <AppRefreshControl refreshing={isRefetching} onRefresh={refetch} />
         }
         renderItem={({ item }) => (
-          <TaskCard task={item} onComplete={(t) => setConfirmTask(t)} />
+          <TaskCard
+            task={item}
+            onComplete={(t) => setConfirmTask(t)}
+            onReschedule={(t) => setRescheduleTask(t)}
+          />
         )}
         ListEmptyComponent={
           <EmptyState
@@ -647,7 +872,12 @@ export default function TasksScreen() {
         message={`Mark "${confirmTask?.title ?? ''}" as completed?`}
         confirmLabel="Complete"
         onConfirm={() => {
-          if (confirmTask) completeMutation.mutate(confirmTask.id)
+          if (confirmTask) {
+            completeMutation.mutate({ id: confirmTask.id })
+            // Close modal immediately — the mutation is queued if offline and
+            // the pill in the header surfaces "Syncing N" until it drains.
+            setConfirmTask(null)
+          }
         }}
         onCancel={() => setConfirmTask(null)}
       />
@@ -657,6 +887,13 @@ export default function TasksScreen() {
         visible={showForm}
         onClose={() => setShowForm(false)}
         onSuccess={() => setShowForm(false)}
+      />
+
+      {/* Reschedule modal */}
+      <RescheduleModal
+        task={rescheduleTask}
+        onClose={() => setRescheduleTask(null)}
+        onSuccess={() => setRescheduleTask(null)}
       />
     </SafeAreaView>
   )
@@ -716,10 +953,22 @@ const s = StyleSheet.create({
   taskTitleDimmed: {
     color: C.textMuted,
   },
+  actionCol: {
+    alignItems: 'center',
+    gap: 4,
+  },
   completeBtn: {
     padding: 2,
   },
   completeBtnPressed: {
+    opacity: 0.6,
+  },
+  rescheduleBtn: {
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: C.primaryLight,
+  },
+  rescheduleBtnPressed: {
     opacity: 0.6,
   },
 

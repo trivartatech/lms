@@ -25,6 +25,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { ConfirmModal } from '@/components/shared/ConfirmModal'
 import { ContactActions } from '@/components/shared/ContactActions'
+import { DatePickerField } from '@/components/shared/DatePickerField'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
 import type {
@@ -740,13 +741,12 @@ function AddAddonModal({ visible, leadId, addon, onClose }: AddAddonModalProps) 
             keyboardType="decimal-pad"
             placeholderTextColor={C.textMuted}
           />
-          <Text style={fm.label}>Start Date (YYYY-MM-DD)</Text>
-          <TextInput
-            style={fm.input}
+          <Text style={fm.label}>Start Date</Text>
+          <DatePickerField
             value={startDate}
-            onChangeText={setStartDate}
-            placeholder="YYYY-MM-DD"
-            placeholderTextColor={C.textMuted}
+            onChange={setStartDate}
+            placeholder="Select start date"
+            accessibilityLabel="Add-on start date"
           />
           <Pressable
             style={[fm.submit, mutation.isPending && fm.submitDisabled]}
@@ -981,8 +981,13 @@ function TaskFormModal({ visible, leadId, onClose }: TaskFormModalProps) {
               ))}
             </View>
 
-            <Text style={fm.label}>Due Date (YYYY-MM-DD)</Text>
-            <TextInput style={fm.input} value={dueDate} onChangeText={setDueDate} placeholder="YYYY-MM-DD" placeholderTextColor={C.textMuted} />
+            <Text style={fm.label}>Due Date</Text>
+            <DatePickerField
+              value={dueDate}
+              onChange={setDueDate}
+              placeholder="Select due date"
+              accessibilityLabel="Task due date"
+            />
 
             <Text style={fm.label}>Assign To</Text>
             <Pressable style={fm.picker} onPress={() => setShowUserPicker(true)}>

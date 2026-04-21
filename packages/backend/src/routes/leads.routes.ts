@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { leadsController } from '../controllers/leads.controller'
 import { authenticate } from '../middleware/auth.middleware'
+import { idempotency } from '../middleware/idempotency.middleware'
 import { requireRole } from '../middleware/rbac.middleware'
 import { validate } from '../middleware/validate.middleware'
 import { leadListQuerySchema } from '../validators/queries'
@@ -8,6 +9,7 @@ import { leadListQuerySchema } from '../validators/queries'
 const router = Router()
 
 router.use(authenticate)
+router.use(idempotency)
 
 router.get('/', validate(leadListQuerySchema, 'query'), leadsController.getAll)
 router.post('/', leadsController.create)

@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { ConfirmModal } from '@/components/shared/ConfirmModal'
 import { ContactActions } from '@/components/shared/ContactActions'
+import { DatePickerField } from '@/components/shared/DatePickerField'
 import { api } from '@/lib/api'
 import type {
   School,
@@ -1005,14 +1006,12 @@ function AgreementFormModal({
         <ScrollView style={fm.body} keyboardShouldPersistTaps="handled">
           {/* Start Date */}
           <View style={fm.field}>
-            <Text style={fm.label}>Start Date * (YYYY-MM-DD)</Text>
-            <TextInput
-              style={fm.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={C.textMuted}
+            <Text style={fm.label}>Start Date *</Text>
+            <DatePickerField
               value={form.startDate}
-              onChangeText={(v) => set('startDate', v)}
-              autoCapitalize="none"
+              onChange={(v) => set('startDate', v)}
+              placeholder="Select start date"
+              accessibilityLabel="Agreement start date"
             />
           </View>
 
@@ -1029,16 +1028,14 @@ function AgreementFormModal({
             />
           </View>
 
-          {/* End Date (auto-calculated, still editable) */}
+          {/* End Date (auto-calculated, still editable via picker) */}
           <View style={fm.field}>
             <Text style={fm.label}>End Date (auto-calculated)</Text>
-            <TextInput
-              style={[fm.input, { backgroundColor: C.grayLight }]}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={C.textMuted}
+            <DatePickerField
               value={form.endDate}
-              onChangeText={(v) => set('endDate', v)}
-              autoCapitalize="none"
+              onChange={(v) => set('endDate', v)}
+              placeholder="Select end date"
+              accessibilityLabel="Agreement end date"
             />
           </View>
 
@@ -1089,13 +1086,11 @@ function AgreementFormModal({
           {/* Renewal Date */}
           <View style={fm.field}>
             <Text style={fm.label}>Renewal Date (optional)</Text>
-            <TextInput
-              style={fm.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={C.textMuted}
+            <DatePickerField
               value={form.renewalDate}
-              onChangeText={(v) => set('renewalDate', v)}
-              autoCapitalize="none"
+              onChange={(v) => set('renewalDate', v)}
+              placeholder="Select renewal date"
+              accessibilityLabel="Agreement renewal date"
             />
           </View>
 
@@ -1444,12 +1439,12 @@ function ActivateAddonInline({
         placeholder="Price (₹)"
         placeholderTextColor={C.textMuted}
       />
-      <TextInput
-        style={s.activateInput}
+      <DatePickerField
         value={startDate}
-        onChangeText={setStartDate}
-        placeholder="YYYY-MM-DD"
-        placeholderTextColor={C.textMuted}
+        onChange={setStartDate}
+        placeholder="Select start date"
+        accessibilityLabel="Add-on start date"
+        style={s.activateInput}
       />
       <Pressable style={s.activateConfirmBtn} onPress={() => mutation.mutate()} disabled={mutation.isPending}>
         <Text style={s.activateConfirmText}>{mutation.isPending ? '…' : 'Confirm'}</Text>
@@ -1567,14 +1562,12 @@ function TaskFormModal({
 
           {/* Due Date */}
           <View style={fm.field}>
-            <Text style={fm.label}>Due Date * (YYYY-MM-DD)</Text>
-            <TextInput
-              style={fm.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={C.textMuted}
+            <Text style={fm.label}>Due Date *</Text>
+            <DatePickerField
               value={form.dueDate}
-              onChangeText={(v) => set('dueDate', v)}
-              autoCapitalize="none"
+              onChange={(v) => set('dueDate', v)}
+              placeholder="Select due date"
+              accessibilityLabel="Task due date"
             />
           </View>
 
