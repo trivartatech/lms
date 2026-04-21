@@ -1,5 +1,6 @@
 import { Drawer } from 'expo-router/drawer'
 import { Pressable, View, Text, StyleSheet } from 'react-native'
+import { useRouter } from 'expo-router'
 import { Bell } from 'lucide-react-native'
 import { useQuery } from '@tanstack/react-query'
 import { DrawerContent } from '@/components/layout/DrawerContent'
@@ -10,6 +11,7 @@ import { api } from '@/lib/api'
 import type { DashboardStats } from '@lms/shared'
 
 function HeaderRight() {
+  const router = useRouter()
   const { data } = useQuery<DashboardStats>({
     queryKey: ['dashboard'],
     queryFn: () => api.get('/dashboard/stats').then((r) => r.data),
@@ -20,14 +22,18 @@ function HeaderRight() {
   return (
     <View style={s.headerRight}>
       <OfflineStatusPill />
-      <View>
+      <Pressable
+        onPress={() => router.push('/(app)/tasks')}
+        hitSlop={10}
+        style={({ pressed }) => [s.bellWrap, pressed && { opacity: 0.6 }]}
+      >
         <Bell size={22} color={C.textSecondary} />
         {count > 0 && (
           <View style={s.badge}>
             <Text style={s.badgeText}>{count > 9 ? '9+' : count}</Text>
           </View>
         )}
-      </View>
+      </Pressable>
     </View>
   )
 }
@@ -64,6 +70,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginRight: 16,
   },
+  bellWrap: { padding: 4 },
   badge: {
     position: 'absolute',
     top: -4,
