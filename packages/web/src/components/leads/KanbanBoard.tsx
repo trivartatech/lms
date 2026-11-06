@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { DndContext, DragEndEvent, DragOverlay, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS, type PipelineStage } from '@lms/shared'
+import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS, resolveDropStage, type PipelineStage } from '@lms/shared'
 import type { Lead } from '@lms/shared'
 import { KanbanColumn } from './KanbanColumn'
 import { LeadCard } from './LeadCard'
@@ -56,7 +56,8 @@ export function KanbanBoard({ leads }: Props) {
     const { active, over } = event
     setActiveId(null)
     if (!over) return
-    const newStage = over.id as PipelineStage
+    const newStage = resolveDropStage(over.id, leads)
+    if (!newStage) return
     const lead = leads.find((l) => l.id === active.id)
     if (!lead || lead.pipelineStage === newStage) return
     moveMutation.mutate({ id: lead.id, stage: newStage })

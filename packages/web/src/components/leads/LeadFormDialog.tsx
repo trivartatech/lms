@@ -1,3 +1,4 @@
+import { pipelineStageLabel } from '@lms/shared'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -195,7 +196,7 @@ export function LeadFormDialog({ open, onClose, onSuccess, lead }: Props) {
                       <SelectLabel className="text-xs text-muted-foreground">Pipeline Leads</SelectLabel>
                       {allPipelineLeads.map((l) => (
                         <SelectItem key={`lead:${l.id}`} value={`lead:${l.id}`}>
-                          {l.schoolName} <span className="text-muted-foreground">({l.pipelineStage.replace('_', ' ')})</span>
+                          {l.schoolName} <span className="text-muted-foreground">({pipelineStageLabel(l.pipelineStage)})</span>
                         </SelectItem>
                       ))}
                     </SelectGroup>

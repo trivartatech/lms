@@ -1,3 +1,4 @@
+import { pipelineStageLabel } from '@lms/shared'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -88,7 +89,7 @@ export function ReferralsTab({ schoolId, schoolName }: Props) {
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
-                    {ref.pipelineStage.replace('_', ' ')}
+                    {pipelineStageLabel(ref.pipelineStage)}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {ref.dealValue ? formatCurrency(ref.dealValue) : '-'}

@@ -1,3 +1,4 @@
+import { pipelineStageLabel } from '@lms/shared'
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -315,7 +316,7 @@ export function LeadsPage() {
                   </td>
                   <td className="px-4 py-3">
                     {lead.status === 'CONVERTED' || lead.status === 'LOST' ? (
-                      <span className="text-muted-foreground text-sm">{lead.pipelineStage.replace('_', ' ')}</span>
+                      <span className="text-muted-foreground text-sm">{pipelineStageLabel(lead.pipelineStage)}</span>
                     ) : (
                       <Select
                         value={lead.pipelineStage}

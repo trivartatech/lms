@@ -1,3 +1,4 @@
+import { pipelineStageLabel } from '@lms/shared'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   View,
@@ -537,7 +538,7 @@ function LeadFormModal({ visible, onClose, onSaved, lead }: LeadFormModalProps) 
                       onPress={() => { setReferredBy(val); setShowReferrerPicker(false) }}
                     >
                       <Text style={[fm.pickerOptionText, active && fm.pickerOptionActiveText]}>{l.schoolName}</Text>
-                      <Text style={fm.pickerOptionSub}>{l.pipelineStage.replace(/_/g, ' ')}</Text>
+                      <Text style={fm.pickerOptionSub}>{pipelineStageLabel(l.pipelineStage)}</Text>
                     </Pressable>
                   )
                 })}

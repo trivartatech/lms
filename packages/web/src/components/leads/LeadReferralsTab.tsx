@@ -1,3 +1,4 @@
+import { pipelineStageLabel } from '@lms/shared'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
@@ -128,7 +129,7 @@ export function LeadReferralsTab({ leadId, leadName }: Props) {
                   <td className="px-4 py-3">
                     <Badge variant={statusVariant[ref.status]}>{ref.status.replace('_', ' ')}</Badge>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground text-xs">{ref.pipelineStage.replace('_', ' ')}</td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">{pipelineStageLabel(ref.pipelineStage)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{ref.dealValue ? formatCurrency(ref.dealValue) : '-'}</td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">{formatDate(ref.createdAt)}</td>
                 </tr>

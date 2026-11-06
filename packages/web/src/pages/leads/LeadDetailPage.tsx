@@ -1,3 +1,4 @@
+import { pipelineStageLabel } from '@lms/shared'
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -79,7 +80,7 @@ export function LeadDetailPage() {
             <h1 className="text-2xl font-bold">{lead.schoolName}</h1>
             <Badge variant={statusVariant[lead.status]}>{lead.status.replace('_', ' ')}</Badge>
           </div>
-          <p className="text-muted-foreground text-sm">{lead.pipelineStage.replace('_', ' ')}</p>
+          <p className="text-muted-foreground text-sm">{pipelineStageLabel(lead.pipelineStage)}</p>
         </div>
         <div className="flex gap-2">
           {canConvert && (

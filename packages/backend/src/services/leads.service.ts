@@ -1,3 +1,4 @@
+import { isPipelineStage } from '@lms/shared'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/error.middleware'
 import { timelineService, computeDiff } from './timeline.service'
@@ -51,6 +52,7 @@ export const leadsService = {
   },
 
   async create(data: any, userId: number) {
+    if (data.pipelineStage !== undefined && !isPipelineStage(data.pipelineStage)) throw new AppError(400, 'Invalid pipeline stage')
     const lead = await prisma.lead.create({ data, include: leadInclude })
     await Promise.all([
       prisma.contact.create({
@@ -73,6 +75,7 @@ export const leadsService = {
   },
 
   async update(id: number, data: any, userId: number) {
+    if (data.pipelineStage !== undefined && !isPipelineStage(data.pipelineStage)) throw new AppError(400, 'Invalid pipeline stage')
     const existing = await prisma.lead.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Lead not found')
 
@@ -115,6 +118,7 @@ export const leadsService = {
     if (action === 'assign') {
       await prisma.lead.updateMany({ where: { id: { in: ids } }, data: { assignedToId: payload.assignedToId } })
     } else if (action === 'stage') {
+      if (!isPipelineStage(payload.pipelineStage)) throw new AppError(400, 'Invalid pipeline stage')
       await prisma.lead.updateMany({ where: { id: { in: ids } }, data: { pipelineStage: payload.pipelineStage } })
     } else if (action === 'delete') {
       await prisma.lead.deleteMany({ where: { id: { in: ids } } })

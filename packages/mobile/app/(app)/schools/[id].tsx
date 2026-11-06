@@ -1,3 +1,4 @@
+import { pipelineStageLabel } from '@lms/shared'
 import { SchoolGpsField, type GpsPin } from '@/components/shared/SchoolGpsField'
 import { useState, useMemo } from 'react'
 import {
@@ -571,7 +572,7 @@ export default function SchoolDetailScreen() {
                     <ContactActions phone={ref.phone} size="sm" />
                   </View>
                   <View style={s.referralFooter}>
-                    <Text style={s.referralStage}>{ref.pipelineStage?.replace(/_/g, ' ')}</Text>
+                    <Text style={s.referralStage}>{pipelineStageLabel(ref.pipelineStage)}</Text>
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                       {ref.commission ? (
                         <Text style={s.referralCommission}>{formatCurrency(ref.commission)}</Text>
