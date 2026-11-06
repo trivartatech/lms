@@ -1,3 +1,5 @@
+import { Expo } from 'expo-server-sdk'
+import { runAgreementRenewals } from './agreementRenewals'
 import { prisma } from '../config/prisma'
 import { pushService } from '../services/push.service'
 
@@ -47,7 +49,7 @@ export async function runTaskReminders() {
   const messages = tasks
     .map((t) => {
       const token = t.assignedTo?.pushToken
-      if (!token) return null
+      if (!token || !Expo.isExpoPushToken(token)) return null
       const subject = t.lead?.schoolName ?? t.school?.name ?? 'Task'
       return {
         to: token,
@@ -59,14 +61,16 @@ export async function runTaskReminders() {
     })
     .filter((m): m is NonNullable<typeof m> => m !== null)
 
-  await pushService.sendBatch(messages)
+  const tickets = await pushService.sendBatch(messages)
+  const acceptedIds = messages.filter((_, index) => tickets[index]?.status === 'ok').map(message => message.data.taskId)
+  if (!acceptedIds.length) return { sent: 0 }
 
   await prisma.task.updateMany({
-    where: { id: { in: tasks.map((t) => t.id) } },
+    where: { id: { in: acceptedIds } },
     data: { reminderSentAt: now },
   })
 
-  return { sent: tasks.length }
+  return { sent: acceptedIds.length }
 }
 
 /**
@@ -79,7 +83,7 @@ export function startTaskReminderJob(intervalMs = 15 * 60 * 1000) {
 
   const tick = () => {
     if (stopped) return
-    runTaskReminders()
+    runAgreementRenewals().then(() => runTaskReminders())
       .then((r) => {
         if (r.sent > 0) console.log(`[task-reminders] sent ${r.sent} notifications`)
       })

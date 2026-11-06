@@ -1,3 +1,4 @@
+import { AgreementPayments } from '@/components/agreements/AgreementPayments'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, FileCheck, Download, Pencil } from 'lucide-react'
@@ -100,6 +101,7 @@ export function AgreementsTab({ schoolId }: Props) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <AgreementPayments agreementId={a.id} />
                   <Badge variant={statusVariant[a.status]}>{a.status.replace('_', ' ')}</Badge>
                   <Button
                     size="sm"

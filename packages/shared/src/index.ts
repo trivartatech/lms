@@ -14,3 +14,5 @@ export * from './types/task.types'
 export * from './types/timeline.types'
 export * from './types/report.types'
 export * from './types/contact.types'
+
+export * from './task-scheduling'

@@ -71,6 +71,7 @@ export const pushService = {
         })
       } catch (err) {
         console.error('[push] chunk send failed:', err)
+        tickets.push(...chunk.map(() => ({ status: 'error' as const, message: 'Push transport failed; retry later' })))
       }
       chunkStart += chunk.length
     }

@@ -50,6 +50,7 @@ export function TaskFormDialog({ open, onClose, onSuccess, defaultLeadId, defaul
   const onSubmit = async (data: FormData) => {
     await api.post('/tasks', {
       ...data,
+      dueDate: new Date(data.dueDate).toISOString(),
       assignedToId: data.assignedToId ? parseInt(data.assignedToId) : undefined,
       leadId: defaultLeadId,
       schoolId: defaultSchoolId,

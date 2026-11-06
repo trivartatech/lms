@@ -1,3 +1,4 @@
+import { matchesTaskView, type TaskView } from '@lms/shared'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, CheckCircle, Phone, Users, Bell, CalendarClock } from 'lucide-react'
@@ -21,6 +22,7 @@ const typeIcon: Record<string, any> = {
 
 export function TasksPage() {
   const queryClient = useQueryClient()
+  const [view, setView] = useState<TaskView>('TODAY')
   const [showForm, setShowForm] = useState(false)
   const [rescheduleTask, setRescheduleTask] = useState<Task | null>(null)
 
@@ -46,11 +48,12 @@ export function TasksPage() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap gap-2">{(['ALL', 'TODAY', 'OVERDUE', 'UPCOMING', 'PENDING', 'COMPLETED'] as TaskView[]).map(v => <Button key={v} size="sm" variant={view === v ? 'default' : 'outline'} onClick={() => setView(v)}>{v.charAt(0) + v.slice(1).toLowerCase()} ({tasks?.filter(t => matchesTaskView(t, v)).length ?? 0})</Button>)}</div>
       {isLoading ? (
         <TableSkeleton rows={6} cols={3} />
       ) : (
         <div className="space-y-2">
-          {tasks?.map((task) => {
+          {tasks?.filter(t => matchesTaskView(t, view)).map((task) => {
             const Icon = typeIcon[task.type] ?? Bell
             return (
               <Card key={task.id} className={task.status === 'COMPLETED' ? 'opacity-60' : ''}>
@@ -62,7 +65,7 @@ export function TasksPage() {
                         {task.title}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Due {formatDate(task.dueDate)}
+                        Due {new Date(task.dueDate).toLocaleString('en-IN')}
                         {task.assignedTo && ` · ${task.assignedTo.name}`}
                         {task.lead && ` · Lead: ${task.lead.schoolName}`}
                         {task.school && ` · School: ${task.school.name}`}
@@ -101,9 +104,9 @@ export function TasksPage() {
               </Card>
             )
           })}
-          {(!tasks || tasks.length === 0) && (
+          {((tasks?.filter(t => matchesTaskView(t, view)).length ?? 0) === 0) && (
             <div className="text-center py-12 text-muted-foreground border rounded-md bg-muted/20">
-              No tasks yet
+              No tasks in this view
             </div>
           )}
         </div>

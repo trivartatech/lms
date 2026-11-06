@@ -1,3 +1,5 @@
+import { TimePickerField } from '@/components/shared/TimePickerField'
+import { rescheduleTaskDate, localDateInput, matchesTaskView, type TaskView } from '@lms/shared'
 import { useState, useMemo, useEffect } from 'react'
 import {
   View,
@@ -28,7 +30,7 @@ import {
   CalendarClock,
 } from 'lucide-react-native'
 import { C } from '@/lib/colors'
-import { formatDate, todayISO } from '@/lib/utils'
+import { formatDateTime, todayISO } from '@/lib/utils'
 import { StatusBadge } from '@/components/shared/StatusBadge'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
@@ -52,7 +54,7 @@ const TYPE_META: Record<
   REMINDER: { label: 'Reminder', color: C.warning,  bg: C.warningLight, Icon: Bell  },
 }
 
-type FilterTab = 'ALL' | 'PENDING' | 'COMPLETED'
+type FilterTab = TaskView
 
 // ─── Task form data ───────────────────────────────────────────────────────────
 
@@ -60,6 +62,7 @@ type TaskFormData = {
   title: string
   type: TaskType
   dueDate: string
+  dueTime: string
   assignedToId: number | null
   notes: string
 }
@@ -68,6 +71,7 @@ const BLANK_TASK = (): TaskFormData => ({
   title: '',
   type: 'CALL',
   dueDate: todayISO(),
+  dueTime: '09:00',
   assignedToId: null,
   notes: '',
 })
@@ -160,7 +164,7 @@ function TaskCard({
         <StatusBadge status={task.type} size="sm" />
         <StatusBadge status={task.status} size="sm" />
         <Text style={[s.dueText, isOverdue && s.dueOverdue]}>
-          {isOverdue ? '⚠ ' : ''}{formatDate(task.dueDate)}
+          {isOverdue ? '⚠ ' : ''}{formatDateTime(task.dueDate)}
         </Text>
       </View>
 
@@ -210,12 +214,15 @@ function FilterTabs({
 }) {
   const tabs: { key: FilterTab; label: string }[] = [
     { key: 'ALL', label: 'All' },
+    { key: 'TODAY', label: 'Today' },
+    { key: 'OVERDUE', label: 'Overdue' },
+    { key: 'UPCOMING', label: 'Upcoming' },
     { key: 'PENDING', label: 'Pending' },
     { key: 'COMPLETED', label: 'Completed' },
   ]
 
   return (
-    <View style={ft.row}>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={ft.row} style={{ flexGrow: 0 }}>
       {tabs.map((tab) => (
         <Pressable
           key={tab.key}
@@ -242,7 +249,7 @@ function FilterTabs({
           </View>
         </Pressable>
       ))}
-    </View>
+    </ScrollView>
   )
 }
 
@@ -349,7 +356,7 @@ function TaskFormModal({
     mutation.mutate({
       title: form.title.trim(),
       type: form.type,
-      dueDate: form.dueDate,
+      dueDate: new Date(form.dueDate + 'T' + form.dueTime + ':00').toISOString(),
       assignedToId: form.assignedToId ?? undefined,
       notes: form.notes.trim() || undefined,
     })
@@ -507,6 +514,7 @@ function TaskFormModal({
             )}
           </View>
 
+          <TimePickerField value={form.dueTime} onChange={v => set('dueTime', v)} />
           {/* Notes */}
           <View style={tfm.field}>
             <Text style={tfm.label}>Notes (optional)</Text>
@@ -559,7 +567,7 @@ function RescheduleModal({
   const visible = task !== null
   const seeded = useMemo(() => {
     if (!task?.dueDate) return ''
-    return new Date(task.dueDate).toISOString().slice(0, 10)
+    return localDateInput(task.dueDate)
   }, [task?.id, task?.dueDate])
 
   // Reset scratch value when the modal opens/closes or target task changes.
@@ -594,7 +602,7 @@ function RescheduleModal({
       onClose()
       return
     }
-    mutation.mutate({ id: task.id, dueDate: newDate })
+    mutation.mutate({ id: task.id, dueDate: rescheduleTaskDate(task.dueDate, newDate) })
     // Close immediately: if offline, the mutation is safely queued; the
     // OfflineStatusPill in the header reflects the pending count.
     onClose()
@@ -615,7 +623,7 @@ function RescheduleModal({
             <View style={rs.body}>
               <Text style={rs.taskTitle} numberOfLines={2}>{task.title}</Text>
               <Text style={rs.currentDue}>
-                Currently due: <Text style={rs.currentDueValue}>{formatDate(task.dueDate)}</Text>
+                Currently due: <Text style={rs.currentDueValue}>{formatDateTime(task.dueDate)}</Text>
               </Text>
 
               <Text style={rs.label}>New due date</Text>
@@ -780,6 +788,9 @@ export default function TasksScreen() {
     const all = tasks ?? []
     return {
       ALL: all.length,
+      TODAY: all.filter(t => matchesTaskView(t, 'TODAY')).length,
+      OVERDUE: all.filter(t => matchesTaskView(t, 'OVERDUE')).length,
+      UPCOMING: all.filter(t => matchesTaskView(t, 'UPCOMING')).length,
       PENDING: all.filter((t) => t.status === 'PENDING').length,
       COMPLETED: all.filter((t) => t.status === 'COMPLETED').length,
     }
@@ -787,7 +798,7 @@ export default function TasksScreen() {
 
   // Apply filter then search
   const filtered = useMemo(() => {
-    let list = tasks ?? []
+    let list = (tasks ?? []).filter(t => matchesTaskView(t, activeFilter))
     if (activeFilter === 'PENDING') list = list.filter((t) => t.status === 'PENDING')
     if (activeFilter === 'COMPLETED') list = list.filter((t) => t.status === 'COMPLETED')
     if (search.trim()) {

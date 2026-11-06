@@ -1,3 +1,4 @@
+import { AgreementPayments } from '@/components/agreements/AgreementPayments'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -99,6 +100,7 @@ export function AgreementsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      <AgreementPayments agreementId={a.id} />
                       <Button
                         variant="ghost"
                         size="sm"

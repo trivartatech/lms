@@ -1,3 +1,4 @@
+import { AgreementPayments } from '@/components/shared/AgreementPayments'
 import { useState, useMemo } from 'react'
 import {
   View,
@@ -164,6 +165,7 @@ function AgreementCard({
         </View>
       )}
 
+      <AgreementPayments agreementId={agreement.id} />
       {/* Notes */}
       {agreement.notes ? (
         <Text style={s.notes} numberOfLines={2}>

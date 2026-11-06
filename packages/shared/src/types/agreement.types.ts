@@ -45,3 +45,20 @@ export interface UpdateAgreementDto {
   totalInstalments?: number
   notes?:            string
 }
+
+export interface AgreementPayment {
+ id: number
+ agreementId: number
+ amount: number
+ dueDate: string
+ paidAt: string | null
+ reference: string | null
+}
+export interface AgreementPayments {
+ payments: AgreementPayment[]
+ value: number
+ advance: number
+ received: number
+ outstanding: number
+ unscheduled: number
+}

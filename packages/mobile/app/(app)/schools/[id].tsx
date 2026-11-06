@@ -1,3 +1,4 @@
+import { AgreementPayments } from '@/components/shared/AgreementPayments'
 import { pipelineStageLabel } from '@lms/shared'
 import { SchoolGpsField, type GpsPin } from '@/components/shared/SchoolGpsField'
 import { useState, useMemo } from 'react'
@@ -370,6 +371,7 @@ export default function SchoolDetailScreen() {
                         {isUrgentRenewal ? ' — Due soon!' : ''}
                       </Text>
                     ) : null}
+                    <AgreementPayments agreementId={agr.id} />
                     {agr.notes ? <Text style={s.agreementNotes}>{agr.notes}</Text> : null}
                   </View>
                 )

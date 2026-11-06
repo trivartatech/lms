@@ -200,6 +200,8 @@ model QuotationItem {
 }
 
 model Agreement {
+  payments AgreementPayment[]
+  renewalReminders AgreementRenewalReminder[]
   id          Int      @id @default(autoincrement())
   schoolId    Int      @map("school_id")
   school      School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -344,4 +346,29 @@ model TimelineEvent {
   @@index([eventType])
   @@index([createdAt])
   @@map("timeline_events")
+}
+
+model AgreementPayment {
+  id Int @id @default(autoincrement())
+  agreementId Int @map("agreement_id")
+  agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  amount Decimal
+  dueDate DateTime @map("due_date")
+  paidAt DateTime? @map("paid_at")
+  reference String?
+  createdById Int @map("created_by_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([agreementId])
+  @@map("agreement_payments")
+}
+
+model AgreementRenewalReminder {
+  id Int @id @default(autoincrement())
+  agreementId Int @map("agreement_id")
+  agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  renewalDate DateTime @map("renewal_date")
+  daysBefore Int @map("days_before")
+  taskId Int @unique @map("task_id")
+  @@unique([agreementId, renewalDate, daysBefore])
+  @@map("agreement_renewal_reminders")
 }

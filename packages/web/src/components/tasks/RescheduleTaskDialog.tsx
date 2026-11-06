@@ -1,3 +1,4 @@
+import { rescheduleTaskDate } from '@lms/shared'
 import { useEffect, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -63,7 +64,7 @@ export function RescheduleTaskDialog({ task, onClose }: Props) {
       onClose()
       return
     }
-    mutation.mutate({ id: task.id, dueDate: newDate })
+    mutation.mutate({ id: task.id, dueDate: rescheduleTaskDate(task.dueDate, newDate) })
   }
 
   const open = task !== null
