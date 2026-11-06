@@ -27,7 +27,7 @@ export const leadsService = {
     if (userRole === 'SALES_EXECUTIVE') where.assignedToId = userId
     if (stage) where.pipelineStage = stage
     if (status) where.status = status
-    if (assignedTo) where.assignedToId = assignedTo
+    if (assignedTo && userRole !== 'SALES_EXECUTIVE') where.assignedToId = assignedTo
     if (search) {
       where.OR = [
         { schoolName: { contains: search } },
@@ -128,6 +128,7 @@ export const leadsService = {
       if (!row.schoolName || !row.phone) continue
       const lead = await prisma.lead.create({
         data: {
+          assignedToId: userId,
           schoolName: row.schoolName,
           contactPerson: row.contactPerson || '',
           phone: row.phone,
@@ -232,15 +233,19 @@ export const leadsService = {
   },
 
   async convertToSchool(leadId: number, userId: number) {
-    const lead = await prisma.lead.findUnique({
+    return prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findUnique({
       where: { id: leadId },
       include: { referralIncentive: true },
     })
     if (!lead) throw new AppError(404, 'Lead not found')
     if (lead.status === 'CONVERTED') throw new AppError(400, 'Lead is already converted')
 
+    const existingSchool = await tx.school.findUnique({ where: { createdFromLeadId: leadId } })
+    if (existingSchool) throw new AppError(409, 'A school already exists for this lead. Open the existing school; this conversion needs review.')
+
     // Create school record, preserving referral chain
-    const school = await prisma.school.create({
+    const school = await tx.school.create({
       data: {
         name: lead.schoolName,
         contactPerson: lead.contactPerson,
@@ -248,6 +253,8 @@ export const leadsService = {
         email: lead.email,
         location: lead.location,
         totalStudents: lead.totalStudents,
+        assignedToId: lead.assignedToId,
+        notes: lead.notes,
         referredBySchoolId: lead.referredBySchoolId,
         createdFromLeadId: lead.id,
       },
@@ -256,31 +263,31 @@ export const leadsService = {
     // Transfer add-ons, quotations, contacts, tasks, and referred leads to the new school
     // (keep leadId intact so they still appear in the lead's history)
     await Promise.all([
-      prisma.schoolAddon.updateMany({
+      tx.schoolAddon.updateMany({
         where: { leadId },
         data: { schoolId: school.id },
       }),
-      prisma.quotation.updateMany({
+      tx.quotation.updateMany({
         where: { leadId },
         data: { schoolId: school.id },
       }),
-      prisma.contact.updateMany({
+      tx.contact.updateMany({
         where: { leadId },
         data: { schoolId: school.id },
       }),
-      prisma.task.updateMany({
+      tx.task.updateMany({
         where: { leadId },
         data: { schoolId: school.id },
       }),
       // Leads referred by this lead now show under the new school's referrals too
-      prisma.lead.updateMany({
+      tx.lead.updateMany({
         where: { referredByLeadId: leadId },
         data: { referredBySchoolId: school.id },
       }),
     ])
 
     // Update lead status
-    await prisma.lead.update({
+    await tx.lead.update({
       where: { id: leadId },
       data: { status: 'CONVERTED', pipelineStage: 'CLOSED_WON' },
     })
@@ -293,7 +300,7 @@ export const leadsService = {
         calculatedCommission = lead.referralIncentive.bonusValue
       } else {
         // For PERCENTAGE: use latest agreement value if available, else null
-        const latestAgreement = await prisma.agreement.findFirst({
+        const latestAgreement = await tx.agreement.findFirst({
           where: { schoolId: school.id },
           orderBy: { createdAt: 'desc' },
         })
@@ -304,26 +311,27 @@ export const leadsService = {
         }
       }
 
-      await prisma.referralIncentive.update({
+      await tx.referralIncentive.update({
         where: { id: lead.referralIncentive.id },
         data: { convertedSchoolId: school.id, calculatedCommission },
       })
     }
 
     // Timeline events
-    await timelineService.logEvent({
+    await tx.timelineEvent.create({ data: {
       leadId,
       eventType: 'LEAD_CONVERTED',
       description: `Lead converted to school: ${school.name}`,
       createdById: userId,
-    })
-    await timelineService.logEvent({
+    } })
+    await tx.timelineEvent.create({ data: {
       schoolId: school.id,
       eventType: 'LEAD_CONVERTED',
       description: `School created from lead #${leadId}`,
       createdById: userId,
-    })
+    } })
 
     return school
+    })
   },
 }

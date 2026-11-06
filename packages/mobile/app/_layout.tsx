@@ -97,7 +97,7 @@ function InitialLayout() {
       const { refreshToken, setTokens, logout } = useAuthStore.getState()
       if (refreshToken) {
         try {
-          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken })
+          const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken }, { timeout: 15000 })
           if (!cancelled) {
             setTokens(data.accessToken, data.refreshToken ?? refreshToken)
           }

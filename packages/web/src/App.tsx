@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/store/auth.store'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/queryClient'
@@ -17,6 +18,10 @@ import { TasksPage } from '@/pages/TasksPage'
 import { ReportsPage } from '@/pages/ReportsPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { ActivityPage } from '@/pages/ActivityPage'
+
+useAuthStore.subscribe((state, previous) => {
+  if (state.user?.id !== previous.user?.id) queryClient.clear()
+})
 
 export default function App() {
   return (

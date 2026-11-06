@@ -5,7 +5,8 @@ import { uuidv4 } from './uuid'
 
 const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl ?? 'http://localhost:3001/api'
 
-export const api = axios.create({ baseURL: BASE_URL })
+export const api = axios.create({ baseURL: BASE_URL, timeout: 30000 })
+let refreshPromise: Promise<void> | null = null
 
 const MUTATING_METHODS = new Set(['post', 'put', 'patch', 'delete'])
 
@@ -37,18 +38,24 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && original && !original._retry && !original.url?.includes('/auth/')) {
       original._retry = true
       try {
-        const refreshToken = useAuthStore.getState().refreshToken
-        if (!refreshToken) throw new Error('No refresh token')
-        // Mobile passes refresh token in the body (no cookie jar in RN).
-        const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken })
-        useAuthStore.getState().setTokens(data.accessToken, data.refreshToken ?? refreshToken)
-        original.headers.Authorization = `Bearer ${data.accessToken}`
+        if (!refreshPromise) {
+          refreshPromise = (async () => {
+            const refreshToken = useAuthStore.getState().refreshToken
+            if (!refreshToken) throw new Error('No refresh token')
+            const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken }, { timeout: 15000 })
+            if (useAuthStore.getState().refreshToken === refreshToken) {
+              useAuthStore.getState().setTokens(data.accessToken, data.refreshToken ?? refreshToken)
+            }
+          })().finally(() => { refreshPromise = null })
+        }
+        await refreshPromise
+        original.headers.Authorization = `Bearer ${useAuthStore.getState().accessToken}`
         return api(original)
-      } catch {
-        useAuthStore.getState().logout()
+      } catch (refreshError) {
+        if (axios.isAxiosError(refreshError) && [401, 403].includes(refreshError.response?.status ?? 0)) useAuthStore.getState().logout()
       }
     }
     return Promise.reject(error)

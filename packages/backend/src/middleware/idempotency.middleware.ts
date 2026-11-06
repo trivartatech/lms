@@ -51,7 +51,9 @@ export async function idempotency(req: Request, res: Response, next: NextFunctio
       where: { userId_key: { userId, key } },
     })
 
-    if (existing && existing.expiresAt.getTime() > Date.now()) {
+    if (existing && (existing.status === 0 || existing.expiresAt.getTime() > Date.now())) {
+      if (existing.status === 0) { res.status(409).json({ message: 'Request processing; retry with the same key' }); return }
+      if (existing.method !== req.method || existing.path !== req.originalUrl.split('?')[0]) { res.status(409).json({ message: 'Key belongs to another request' }); return }
       // Replay — return the cached response verbatim. Tag the response so
       // clients (and tests) can see the short-circuit happened.
       res.setHeader('Idempotent-Replay', 'true')
@@ -69,14 +71,18 @@ export async function idempotency(req: Request, res: Response, next: NextFunctio
     // tripping the unique constraint.
     if (existing) {
       await prisma.idempotencyKey
-        .delete({ where: { userId_key: { userId, key } } })
+        .deleteMany({ where: { userId, key, status: { not: 0 }, expiresAt: { lte: new Date() } } })
         .catch(() => {})
     }
-  } catch (err) {
-    // DB lookup failed — don't let idempotency bookkeeping break the request.
-    // Log and continue; worst case is a replay creates a duplicate, same as today.
+    await prisma.idempotencyKey.create({ data: {
+      userId, key, method: req.method, path: req.originalUrl.split('?')[0],
+      status: 0, response: '', expiresAt: new Date(Date.now() + TTL_MS),
+    } })
+  } catch (err: any) {
+    if (err.code === 'P2002') { res.status(409).json({ message: 'Request processing; retry with the same key' }); return }
+    // Fail closed when reservation storage is unavailable.
     console.error('[idempotency] lookup failed:', err)
-    return next()
+    return next(err)
   }
 
   // Monkey-patch res.json so we capture the response body after the route handler
@@ -89,7 +95,7 @@ export async function idempotency(req: Request, res: Response, next: NextFunctio
       const responseJson = safeStringify(body)
       if (responseJson !== null) {
         prisma.idempotencyKey
-          .create({
+          .update({ where: { userId_key: { userId, key } },
             data: {
               userId,
               key,
@@ -112,6 +118,10 @@ export async function idempotency(req: Request, res: Response, next: NextFunctio
     return originalJson(body)
   }
 
+  res.on('finish', () => {
+    if (res.statusCode === 204) void prisma.idempotencyKey.update({ where: { userId_key: { userId, key } }, data: { status: 204, response: 'null' } }).catch(() => {})
+    if (res.statusCode >= 400 && res.statusCode < 500) void prisma.idempotencyKey.delete({ where: { userId_key: { userId, key } } }).catch(() => {})
+  })
   return next()
 }
 

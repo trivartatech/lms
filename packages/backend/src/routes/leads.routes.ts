@@ -1,3 +1,4 @@
+import { leadAccess } from '../middleware/lead-access.middleware'
 import { Router } from 'express'
 import { leadsController } from '../controllers/leads.controller'
 import { authenticate } from '../middleware/auth.middleware'
@@ -9,6 +10,7 @@ import { leadListQuerySchema } from '../validators/queries'
 const router = Router()
 
 router.use(authenticate)
+router.use(leadAccess)
 router.use(idempotency)
 
 router.get('/', validate(leadListQuerySchema, 'query'), leadsController.getAll)
