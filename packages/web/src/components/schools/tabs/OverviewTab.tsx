@@ -37,6 +37,9 @@ export function OverviewTab({ school, onEdit }: Props) {
           <div className="flex items-center gap-2 text-muted-foreground">
             <Mail className="h-4 w-4" /><span>{school.email}</span>
           </div>
+          {school.latitude != null && school.longitude != null && (
+            <a className="flex items-center gap-2 text-primary underline" href={'https://www.google.com/maps/search/?api=1&query=' + school.latitude + ',' + school.longitude} target="_blank" rel="noopener noreferrer"><MapPin className="h-4 w-4" />Open Google Maps</a>
+          )}
           {school.location && (
             <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="h-4 w-4" /><span>{school.location}</span>

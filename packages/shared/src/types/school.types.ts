@@ -5,6 +5,8 @@ export interface School {
   phone: string
   email?: string
   location?: string
+  latitude?: number | null
+  longitude?: number | null
   notes?: string
   totalStudents?: number
   assignedToId?: number
@@ -31,6 +33,8 @@ export interface CreateSchoolDto {
   phone: string
   email?: string
   location?: string
+  latitude?: number | null
+  longitude?: number | null
   notes?: string
   totalStudents?: number
   assignedToId?: number
@@ -43,6 +47,8 @@ export interface UpdateSchoolDto {
   phone?: string
   email?: string
   location?: string
+  latitude?: number | null
+  longitude?: number | null
   notes?: string
   totalStudents?: number
   assignedToId?: number

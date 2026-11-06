@@ -1,3 +1,4 @@
+import { SchoolGpsField, type GpsPin } from '@/components/shared/SchoolGpsField'
 import { useState, useMemo } from 'react'
 import {
   View,
@@ -190,6 +191,7 @@ function SchoolFormModal({
     referredBySchoolId: '' as string,
   })
 
+  const [pin, setPin] = useState<GpsPin>({ latitude: null, longitude: null })
   const [form, setForm] = useState(blankForm)
   const [showUserPicker, setShowUserPicker] = useState(false)
   const [showSchoolPicker, setShowSchoolPicker] = useState(false)
@@ -217,6 +219,7 @@ function SchoolFormModal({
   const mutation = useMutation({
     mutationFn: () =>
       api.post('/schools', {
+        ...pin,
         name: form.name.trim(),
         contactPerson: form.contactPerson.trim(),
         phone: form.phone.trim(),
@@ -228,6 +231,7 @@ function SchoolFormModal({
         referredBySchoolId: form.referredBySchoolId ? parseInt(form.referredBySchoolId, 10) : undefined,
       }),
     onSuccess: () => {
+      setPin({ latitude: null, longitude: null })
       setForm(blankForm())
       onSuccess()
       Alert.alert('Success', 'School created successfully!')
@@ -320,6 +324,7 @@ function SchoolFormModal({
             />
           </View>
 
+          <SchoolGpsField value={pin} onChange={setPin} />
           {/* Total Students */}
           <View style={fm.field}>
             <Text style={fm.label}>Total Students</Text>

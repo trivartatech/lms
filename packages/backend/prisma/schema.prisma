@@ -126,6 +126,8 @@ model School {
   phone         String
   email         String?
   location      String?
+  latitude      Float?
+  longitude     Float?
   notes         String?
 
   assignedToId Int?  @map("assigned_to_id")

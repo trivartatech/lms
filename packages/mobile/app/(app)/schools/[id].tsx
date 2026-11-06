@@ -1,3 +1,4 @@
+import { SchoolGpsField, type GpsPin } from '@/components/shared/SchoolGpsField'
 import { useState, useMemo } from 'react'
 import {
   View,
@@ -227,6 +228,7 @@ export default function SchoolDetailScreen() {
               <View style={{ marginTop: 6, marginBottom: 4 }}>
                 <ContactActions phone={school.phone} email={school.email ?? undefined} />
               </View>
+              {school.latitude != null && school.longitude != null && <Pressable onPress={() => Linking.openURL('https://www.google.com/maps/search/?api=1&query=' + school.latitude + ',' + school.longitude).catch(() => Alert.alert('Maps', 'Unable to open Google Maps.'))}><Text style={{ color: '#2563eb', paddingVertical: 10 }}>Open Google Maps</Text></Pressable>}
               {school.location ? <InfoRow label="Location" value={school.location} /> : null}
               {school.totalStudents != null ? (
                 <InfoRow label="Total Students" value={school.totalStudents.toLocaleString()} />
@@ -720,6 +722,7 @@ function SchoolEditModal({
   onClose: () => void
   onSuccess: () => void
 }) {
+  const [pin, setPin] = useState<GpsPin>({ latitude: school.latitude ?? null, longitude: school.longitude ?? null })
   const [form, setForm] = useState({
     name: school.name,
     contactPerson: school.contactPerson,
@@ -734,6 +737,7 @@ function SchoolEditModal({
   const mutation = useMutation({
     mutationFn: () =>
       api.put(`/schools/${school.id}`, {
+        ...pin,
         name: form.name.trim(),
         contactPerson: form.contactPerson.trim(),
         phone: form.phone.trim(),
@@ -783,6 +787,7 @@ function SchoolEditModal({
               />
             </View>
           ))}
+          <SchoolGpsField value={pin} onChange={setPin} />
           <View style={fm.field}>
             <Text style={fm.label}>Notes</Text>
             <TextInput

@@ -37,7 +37,13 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "./plugins/withExternalAppQueries"
+      "./plugins/withExternalAppQueries",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow LMS to save the school GPS pin while you are at the school."
+        }
+      ]
     ],
     "extra": {
       "apiBaseUrl": "https://lms.trivarta.in/api",

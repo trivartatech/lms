@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -19,6 +20,8 @@ const schema = z.object({
   phone: z.string().min(1, 'Required'),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   location: z.string().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
   totalStudents: z.coerce.number().int().min(0).optional(),
   assignedToId: z.string().optional(),
   referredBySchoolId: z.string().optional(),
@@ -34,6 +37,10 @@ interface Props {
 }
 
 export function SchoolFormDialog({ open, onClose, onSuccess, school }: Props) {
+  const captureVersion = useRef(0)
+  useEffect(() => { captureVersion.current++; setLocating(false) }, [open, school?.id])
+  const [locating, setLocating] = useState(false)
+  const [gpsError, setGpsError] = useState('')
   const { data: users } = useQuery<User[]>({
     queryKey: ['users'],
     queryFn: () => api.get('/users').then((r) => r.data),
@@ -49,6 +56,7 @@ export function SchoolFormDialog({ open, onClose, onSuccess, school }: Props) {
 
   const {
     register,
+    watch,
     handleSubmit,
     reset,
     setValue,
@@ -62,6 +70,8 @@ export function SchoolFormDialog({ open, onClose, onSuccess, school }: Props) {
           phone: school.phone,
           email: school.email ?? '',
           location: school.location ?? '',
+          latitude: school.latitude,
+          longitude: school.longitude,
           totalStudents: school.totalStudents,
           assignedToId: school.assignedToId?.toString() ?? '',
           referredBySchoolId: school.referredBySchoolId?.toString() ?? 'none',
@@ -70,6 +80,30 @@ export function SchoolFormDialog({ open, onClose, onSuccess, school }: Props) {
       : { referredBySchoolId: 'none' },
   })
 
+  const latitude = watch('latitude')
+  const longitude = watch('longitude')
+  useEffect(() => {
+    if (!open) return
+    setGpsError('')
+    setValue('latitude', school?.latitude ?? null)
+    setValue('longitude', school?.longitude ?? null)
+  }, [open, school?.id, setValue])
+  const captureLocation = () => {
+    if (!navigator.geolocation) { setGpsError('Location is unavailable in this browser.'); return }
+    const version = ++captureVersion.current
+    setLocating(true)
+    setGpsError('')
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
+      if (version !== captureVersion.current) return
+      setValue('latitude', coords.latitude, { shouldDirty: true })
+      setValue('longitude', coords.longitude, { shouldDirty: true })
+      setLocating(false)
+    }, () => {
+      if (version !== captureVersion.current) return
+      setGpsError('Unable to get GPS. Allow location access and try again while at the school.')
+      setLocating(false)
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 })
+  }
   const onSubmit = async (data: FormData) => {
     const payload = {
       ...data,
@@ -90,7 +124,7 @@ export function SchoolFormDialog({ open, onClose, onSuccess, school }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{school ? 'Edit School' : 'Add School'}</DialogTitle>
         </DialogHeader>
@@ -162,9 +196,20 @@ export function SchoolFormDialog({ open, onClose, onSuccess, school }: Props) {
             <Label>Notes</Label>
             <Textarea {...register('notes')} placeholder="Additional notes..." rows={3} />
           </div>
+          <div className="space-y-2 text-sm">
+            <Label>School GPS pin</Label>
+            <p className="text-xs text-muted-foreground">Capture while at the school. Save the form to keep this pin.</p>
+            <Button type="button" variant="outline" disabled={locating} onClick={captureLocation}>{locating ? 'Getting location…' : 'Use current location'}</Button>
+            {latitude != null && longitude != null && <div>
+              <span>{latitude.toFixed(6)}, {longitude.toFixed(6)}</span>{' '}
+              <a href={'https://www.google.com/maps/search/?api=1&query=' + latitude + ',' + longitude} target="_blank" rel="noopener noreferrer" className="text-primary underline">Open Google Maps</a>{' '}
+              <button type="button" onClick={() => { setValue('latitude', null); setValue('longitude', null) }}>Remove pin</button>
+            </div>}
+            {gpsError && <p role="alert" className="text-destructive">{gpsError}</p>}
+          </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting || locating}>
               {isSubmitting ? 'Saving...' : school ? 'Update' : 'Add School'}
             </Button>
           </DialogFooter>

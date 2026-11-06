@@ -1,3 +1,4 @@
+import { validateCoordinates } from '../validators/coordinates'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/error.middleware'
 import { timelineService, computeDiff } from './timeline.service'
@@ -34,6 +35,7 @@ export const schoolsService = {
   },
 
   async create(data: any) {
+    validateCoordinates(data)
     const school = await prisma.school.create({ data, include: schoolInclude })
     await prisma.contact.create({
       data: {
@@ -48,6 +50,7 @@ export const schoolsService = {
   },
 
   async update(id: number, data: any, userId?: number) {
+    validateCoordinates(data)
     const existing = await prisma.school.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'School not found')
 
