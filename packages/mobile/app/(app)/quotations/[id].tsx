@@ -78,7 +78,7 @@ function generateQuotationHTML(quotation: Quotation): string {
   const discountVal = quotation.discount ?? 0
   const taxRate = quotation.tax ?? 0
   const afterDiscount = quotation.subtotal - discountVal
-  const taxVal = afterDiscount * (taxRate / 100)
+  const taxVal = taxRate
   const perStudentStr =
     totalStudents && totalStudents > 0
       ? `<p style="color:#6b7280;font-size:13px;margin-top:4px;">Per student: ₹${Math.round(quotation.total / totalStudents).toLocaleString('en-IN')}</p>`
@@ -176,7 +176,7 @@ function generateQuotationHTML(quotation: Quotation): string {
         <span style="color:#dc2626;">-₹${discountVal.toLocaleString('en-IN')}</span>
       </div>
       <div class="summary-row">
-        <span style="color:#6b7280;">Tax (${taxRate}%)</span>
+        <span style="color:#6b7280;">Tax</span>
         <span>+₹${Math.round(taxVal).toLocaleString('en-IN')}</span>
       </div>
       <div class="summary-total">
@@ -259,7 +259,7 @@ export default function QuotationDetailScreen() {
   const discountVal = quotation.discount ?? 0
   const taxRate = quotation.tax ?? 0
   const afterDiscount = quotation.subtotal - discountVal
-  const taxVal = afterDiscount * (taxRate / 100)
+  const taxVal = taxRate
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
@@ -380,7 +380,7 @@ export default function QuotationDetailScreen() {
               </Text>
             </View>
             <View style={s.summaryRow}>
-              <Text style={s.summaryLabel}>Tax ({taxRate}%)</Text>
+              <Text style={s.summaryLabel}>Tax</Text>
               <Text style={s.summaryValue}>+{formatCurrency(Math.round(taxVal))}</Text>
             </View>
             <View style={s.summaryDivider} />
@@ -462,7 +462,7 @@ function EditQuotationModal({
 
   const [items, setItems] = useState<LineItem[]>(initItems)
   const [discount, setDiscount] = useState(String(quotation.discount ?? 0))
-  const [tax, setTax] = useState(String(quotation.tax ?? 18))
+  const [tax, setTax] = useState(String(((quotation.subtotal - (quotation.discount ?? 0)) > 0 ? (quotation.tax ?? 0) * 100 / (quotation.subtotal - (quotation.discount ?? 0)) : 0)))
   const [showCatalog, setShowCatalog] = useState(false)
 
   const totalStudents = quotation.lead?.totalStudents ?? quotation.school?.totalStudents ?? undefined
@@ -486,7 +486,7 @@ function EditQuotationModal({
   const handleOpen = () => {
     setItems(initItems())
     setDiscount(String(quotation.discount ?? 0))
-    setTax(String(quotation.tax ?? 18))
+    setTax(String(((quotation.subtotal - (quotation.discount ?? 0)) > 0 ? (quotation.tax ?? 0) * 100 / (quotation.subtotal - (quotation.discount ?? 0)) : 0)))
     setShowCatalog(false)
   }
 
@@ -574,7 +574,7 @@ function EditQuotationModal({
         total: (parseFloat(it.quantity) || 1) * (parseFloat(it.unitPrice) || 0),
       })),
       discount: discountVal,
-      tax: taxRate,
+      tax: taxVal,
     })
   }
 
@@ -751,7 +751,7 @@ function EditQuotationModal({
                 <Text style={[em.calcValue, { color: C.error }]}>-{formatCurrency(discountVal)}</Text>
               </View>
               <View style={em.calcRow}>
-                <Text style={em.calcLabel}>Tax ({taxRate}%)</Text>
+                <Text style={em.calcLabel}>Tax</Text>
                 <Text style={em.calcValue}>+{formatCurrency(taxVal)}</Text>
               </View>
               <View style={em.calcDivider} />

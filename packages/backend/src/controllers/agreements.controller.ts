@@ -1,3 +1,4 @@
+import { apiNumbers } from '../lib/api-numbers'
 import { Request, Response, NextFunction } from 'express'
 import { agreementsService } from '../services/agreements.service'
 import { mailerService } from '../services/mailer.service'
@@ -12,7 +13,7 @@ export const agreementsController = {
       const result = await agreementsService.getAll({
         schoolId: schoolId ? parseInt(schoolId) : undefined,
       })
-      res.json(result)
+      res.json(apiNumbers(result))
     } catch (err) {
       next(err)
     }
@@ -21,7 +22,7 @@ export const agreementsController = {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const a = await agreementsService.getById(parseInt(req.params.id))
-      res.json(a)
+      res.json(apiNumbers(a))
     } catch (err) {
       next(err)
     }
@@ -30,7 +31,7 @@ export const agreementsController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const a = await agreementsService.create(req.body, req.user.id)
-      res.status(201).json(a)
+      res.status(201).json(apiNumbers(a))
     } catch (err) {
       next(err)
     }
@@ -39,7 +40,7 @@ export const agreementsController = {
   async update(req: Request, res: Response, next: NextFunction) {
     try {
       const a = await agreementsService.update(parseInt(req.params.id), req.body, req.user.id)
-      res.json(a)
+      res.json(apiNumbers(a))
     } catch (err) {
       next(err)
     }

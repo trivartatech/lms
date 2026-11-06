@@ -23,10 +23,10 @@ const schema = z.object({
   durationYears:    z.coerce.number().min(1).max(5),
   value:            z.coerce.number().min(1, 'Must be > 0'),
   advancePayment:   z.coerce.number().min(0).default(0),
-  totalInstalments: z.coerce.number().min(0).default(0),
+  totalInstalments: z.coerce.number().int().min(0).default(0),
   status:           z.enum(['ACTIVE', 'EXPIRED', 'PENDING_RENEWAL']),
   notes:            z.string().optional(),
-})
+}).refine(data => data.advancePayment <= data.value, { message: 'Advance cannot exceed agreement value', path: ['advancePayment'] })
 type FormData = z.infer<typeof schema>
 
 function addYears(dateStr: string, years: number): string {
@@ -207,10 +207,12 @@ export function AgreementFormDialog({ open, onClose, onSuccess, schoolId, agreem
             <div className="space-y-1.5">
               <Label>Advance Received (₹)</Label>
               <Input type="number" min={0} {...register('advancePayment')} placeholder="0" />
+              {errors.advancePayment && <p className="text-xs text-destructive">{errors.advancePayment.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>No. of Instalments</Label>
-              <Input type="number" min={0} {...register('totalInstalments')} placeholder="0" />
+              <Input type="number" min={0} step={1} {...register('totalInstalments')} placeholder="0" />
+              {errors.totalInstalments && <p className="text-xs text-destructive">{errors.totalInstalments.message}</p>}
             </div>
           </div>
 

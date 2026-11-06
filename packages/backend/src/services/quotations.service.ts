@@ -1,3 +1,4 @@
+import { validateQuotation } from '../validators/quotation'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/error.middleware'
 import { timelineService } from './timeline.service'
@@ -39,6 +40,7 @@ export const quotationsService = {
     },
     userId: number,
   ) {
+    validateQuotation(data)
     const subtotal = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
     const discountAmount = data.discount ?? 0
     const taxAmount = data.tax ?? 0
@@ -98,6 +100,7 @@ export const quotationsService = {
     const existing = await prisma.quotation.findUnique({ where: { id }, include: { items: true } })
     if (!existing) throw new AppError(404, 'Quotation not found')
 
+    validateQuotation({ items: (data.items ?? existing.items).map(item => ({ ...item, unitPrice: Number(item.unitPrice) })), discount: data.discount ?? Number(existing.discount), tax: data.tax ?? Number(existing.tax) })
     const updateData: any = {}
     if (data.status) updateData.status = data.status
 

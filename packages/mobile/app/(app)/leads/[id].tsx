@@ -493,8 +493,8 @@ function QuotationFormModal({ visible, lead, onClose }: QuotationFormModalProps)
     }
     const dto = {
       leadId: lead.id,
-      discount: parseFloat(discount) || 0,
-      tax: parseFloat(tax) || 0,
+      discount: discountAmt,
+      tax: taxAmt,
       items: items.map((it) => ({
         name: it.name.trim(),
         type: it.type,

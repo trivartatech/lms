@@ -163,7 +163,7 @@ export function QuotationFormDialog({ open, onClose, onSuccess, defaultLeadId, d
     if (tax > 0) {
       const newSubtotal = newItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0)
       const newTaxable  = newSubtotal - discount
-      const rate = subtotal > 0 ? tax / (subtotal - discount) : 0
+      const rate = subtotal - discount > 0 ? tax / (subtotal - discount) : 0
       setTax(Math.round(newTaxable * rate))
     }
   }

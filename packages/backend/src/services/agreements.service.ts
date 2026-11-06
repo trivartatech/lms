@@ -1,3 +1,4 @@
+import { validateAgreement } from '../validators/agreement'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/error.middleware'
 import { timelineService, computeDiff } from './timeline.service'
@@ -48,6 +49,7 @@ export const agreementsService = {
     },
     userId: number,
   ) {
+    validateAgreement(data)
     const agreement = await prisma.agreement.create({
       data: {
         schoolId:        data.schoolId,
@@ -87,6 +89,7 @@ export const agreementsService = {
     const existing = await prisma.agreement.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Agreement not found')
 
+    validateAgreement({ ...existing, ...data })
     const updateData: any = { ...data }
     if (data.startDate)  updateData.startDate  = new Date(data.startDate)
     if (data.endDate)    updateData.endDate    = new Date(data.endDate)

@@ -350,7 +350,7 @@ function QuotationFormModal({
         total: (parseFloat(it.quantity) || 1) * (parseFloat(it.unitPrice) || 0),
       })),
       discount: discountVal,
-      tax: taxRate,
+      tax: taxVal,
     }
     mutation.mutate(payload)
   }

@@ -362,8 +362,12 @@ function AgreementFormModal({
       return
     }
     const advanceNum = parseFloat(form.advancePayment) || 0
-    const instNum = parseInt(form.totalInstalments) || 1
+    const instNum = Number(form.totalInstalments || 0)
 
+    if (!Number.isInteger(instNum) || instNum < 0 || advanceNum < 0 || advanceNum > valueNum) {
+      Alert.alert('Invalid payment', 'Advance must be between zero and the agreement value; instalments must be a whole number of zero or more.')
+      return
+    }
     if (isEdit) {
       updateMutation.mutate({
         startDate: form.startDate,
@@ -501,7 +505,7 @@ function AgreementFormModal({
             {(() => {
               const val = parseFloat(form.value) || 0
               const adv = parseFloat(form.advancePayment) || 0
-              const inst = parseInt(form.totalInstalments) || 1
+              const inst = Number(form.totalInstalments || 0)
               const each = inst > 0 ? (val - adv) / inst : 0
               return each > 0 ? (
                 <Text style={fm.hint}>

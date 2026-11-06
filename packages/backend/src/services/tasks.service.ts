@@ -37,6 +37,7 @@ export const tasksService = {
     },
     userId: number,
   ) {
+    if (!Number.isFinite(new Date(data.dueDate).getTime())) throw new AppError(400, 'Invalid due date')
     const task = await prisma.task.create({
       data: { ...data, dueDate: new Date(data.dueDate), type: data.type as any },
       include: taskInclude,
@@ -66,7 +67,16 @@ export const tasksService = {
     const existing = await prisma.task.findUnique({ where: { id } })
     if (!existing) throw new AppError(404, 'Task not found')
 
-    if (data.dueDate) data.dueDate = new Date(data.dueDate)
+    if (data.dueDate !== undefined) {
+      const dueDate = new Date(data.dueDate)
+      if (!Number.isFinite(dueDate.getTime())) throw new AppError(400, 'Invalid due date')
+      data = { ...data, dueDate }
+    }
+    if ((data.dueDate && data.dueDate.getTime() !== existing.dueDate.getTime()) ||
+        (data.assignedToId !== undefined && data.assignedToId !== existing.assignedToId) ||
+        (data.status === 'PENDING' && existing.status !== 'PENDING')) {
+      data = { ...data, reminderSentAt: null }
+    }
 
     const task = await prisma.task.update({ where: { id }, data, include: taskInclude })
 

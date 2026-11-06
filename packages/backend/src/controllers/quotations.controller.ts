@@ -1,3 +1,4 @@
+import { apiNumbers } from '../lib/api-numbers'
 import { Request, Response, NextFunction } from 'express'
 import { quotationsService } from '../services/quotations.service'
 import { mailerService } from '../services/mailer.service'
@@ -13,7 +14,7 @@ export const quotationsController = {
         leadId: leadId ? parseInt(leadId) : undefined,
         schoolId: schoolId ? parseInt(schoolId) : undefined,
       })
-      res.json(result)
+      res.json(apiNumbers(result))
     } catch (err) {
       next(err)
     }
@@ -22,7 +23,7 @@ export const quotationsController = {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const q = await quotationsService.getById(parseInt(req.params.id))
-      res.json(q)
+      res.json(apiNumbers(q))
     } catch (err) {
       next(err)
     }
@@ -31,7 +32,7 @@ export const quotationsController = {
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const q = await quotationsService.create(req.body, req.user.id)
-      res.status(201).json(q)
+      res.status(201).json(apiNumbers(q))
     } catch (err) {
       next(err)
     }
@@ -40,7 +41,7 @@ export const quotationsController = {
   async update(req: Request, res: Response, next: NextFunction) {
     try {
       const q = await quotationsService.update(parseInt(req.params.id), req.body, req.user.id)
-      res.json(q)
+      res.json(apiNumbers(q))
     } catch (err) {
       next(err)
     }
