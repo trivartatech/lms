@@ -1,3 +1,5 @@
+import { useAuthStore } from '@/store/auth.store'
+import type { WorkUpdate } from '@lms/shared'
 import type { QueryClient } from '@tanstack/react-query'
 import { api } from './api'
 
@@ -20,10 +22,12 @@ import { api } from './api'
 
 // Variables arriving here have an `_idempotencyKey` stamped by useOfflineMutation.
 // We pull it off and pass it as a header; the rest of the payload becomes the body.
-type WithKey<V> = V & { _idempotencyKey?: string }
+type WithKey<V> = V & { _idempotencyKey?: string; _ownerId?: number }
 
 function splitKey<V extends object>(vars: WithKey<V>): { body: V; headers: Record<string, string> } {
-  const { _idempotencyKey, ...rest } = vars as WithKey<V> & Record<string, unknown>
+  const { _idempotencyKey, _ownerId, ...rest } = vars as WithKey<V> & Record<string, unknown>
+  const user = useAuthStore.getState().user
+  if (!user || (_ownerId != null && user.id !== _ownerId)) throw new Error('Sign in to the original account to sync this update.')
   const headers: Record<string, string> = {}
   if (_idempotencyKey) headers['Idempotency-Key'] = _idempotencyKey as string
   return { body: rest as unknown as V, headers }
@@ -33,6 +37,7 @@ export function registerMutationDefaults(qc: QueryClient): void {
   // ── Tasks ──────────────────────────────────────────────────────────────────
 
   qc.setMutationDefaults(['tasks', 'complete'], {
+    networkMode: 'online',
     mutationFn: async (vars: WithKey<{ id: number }>) => {
       const { headers } = splitKey(vars)
       const { data } = await api.put(`/tasks/${vars.id}`, { status: 'COMPLETED' }, { headers })
@@ -41,6 +46,7 @@ export function registerMutationDefaults(qc: QueryClient): void {
   })
 
   qc.setMutationDefaults(['tasks', 'reschedule'], {
+    networkMode: 'online',
     mutationFn: async (vars: WithKey<{ id: number; dueDate: string }>) => {
       const { headers } = splitKey(vars)
       const { data } = await api.put(`/tasks/${vars.id}`, { dueDate: vars.dueDate }, { headers })
@@ -48,6 +54,11 @@ export function registerMutationDefaults(qc: QueryClient): void {
     },
   })
 
-  // Future entries (Stage 2+): leads/updateStage, leads/create, schools/update,
-  // quotations/create, agreements/create, addons/create, tasks/create, etc.
+  qc.setMutationDefaults(['operations', 'visit-note'], {
+    networkMode: 'online',
+    mutationFn: async (vars: WithKey<{ id: number; update: WorkUpdate }>) => {
+      const { headers } = splitKey(vars)
+      return api.patch('/operations/work/' + vars.id, vars.update, { headers }).then(r => r.data)
+    },
+  })
 }

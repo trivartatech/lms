@@ -1,6 +1,8 @@
+import { syncLabel, syncError } from '../src/lib/sync-queue'
+import { useIsRestoring } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Stack, useRouter, useSegments } from 'expo-router'
-import { QueryClient, focusManager } from '@tanstack/react-query'
+import { MutationCache, QueryClient, focusManager } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -19,6 +21,14 @@ import {
 const BASE_URL = Constants.expoConfig?.extra?.apiBaseUrl ?? 'http://localhost:3001/api'
 
 const queryClient = new QueryClient({
+  mutationCache: new MutationCache({
+    onSuccess: (_data, _variables, _context, mutation) => {
+      if (!syncLabel(mutation.options.mutationKey)) return
+      void queryClient.invalidateQueries({ queryKey: ['operations'] })
+      void queryClient.invalidateQueries({ queryKey: ['tasks'] })
+      void queryClient.invalidateQueries({ queryKey: ['workspace'] })
+    },
+  }),
   defaultOptions: {
     queries: {
       staleTime: 1000 * 60 * 2,
@@ -35,6 +45,7 @@ const queryClient = new QueryClient({
       // Same for mutations: while offline they pause, and are auto-resumed
       // by react-query when onlineManager flips back to online.
       networkMode: 'offlineFirst',
+      gcTime: 1000 * 60 * 60 * 24 * 7,
       retry: 2,
     },
   },
@@ -46,6 +57,20 @@ const persister = createAsyncStoragePersister({
   storage: AsyncStorage,
   key: 'lms:rq-cache',
   throttleTime: 1000,
+  serialize: client => JSON.stringify({
+    ...client,
+    clientState: {
+      ...client.clientState,
+      mutations: client.clientState.mutations.map(m => ({
+        ...m,
+        state: {
+          ...m.state,
+          error: m.state.error ? { message: syncError(m.state.error) } : null,
+          failureReason: m.state.failureReason ? { message: syncError(m.state.failureReason) } : null,
+        },
+      })),
+    },
+  }),
 })
 
 // NetInfo → onlineManager + AppState → focusManager. Safe at module scope —
@@ -64,7 +89,7 @@ registerMutationDefaults(queryClient)
 // Clear the persisted cache on explicit logout so the next user on this device
 // doesn't hydrate into the previous user's data.
 useAuthStore.subscribe((state, prev) => {
-  if (prev.user && !state.user) {
+  if (prev.user && (prev.user.id !== state.user?.id || prev.user.role !== state.user?.role)) {
     queryClient.clear()
     AsyncStorage.removeItem('lms:rq-cache').catch(() => {})
   }
@@ -72,7 +97,8 @@ useAuthStore.subscribe((state, prev) => {
 
 function InitialLayout() {
   const { user } = useAuthStore()
-  const segments = useSegments()
+  const isRestoring = useIsRestoring()
+  const segments: readonly string[] = useSegments()
   const router = useRouter()
   const [hydrated, setHydrated] = useState(false)
 
@@ -94,12 +120,13 @@ function InitialLayout() {
       }
       if (cancelled) return
 
-      const { refreshToken, setTokens, logout } = useAuthStore.getState()
+      const { refreshToken, setTokens, setAuth, logout } = useAuthStore.getState()
       if (refreshToken) {
         try {
           const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken }, { timeout: 15000 })
           if (!cancelled) {
-            setTokens(data.accessToken, data.refreshToken ?? refreshToken)
+            if (data.user) setAuth(data.accessToken, data.refreshToken ?? refreshToken, data.user)
+            else setTokens(data.accessToken, data.refreshToken ?? refreshToken)
           }
         } catch (err) {
           // Discriminate between network failure and real auth failure:
@@ -122,6 +149,11 @@ function InitialLayout() {
     return () => { cancelled = true }
   }, [])
 
+  useEffect(() => {
+    if (!hydrated || isRestoring || !user) return
+    void queryClient.resumePausedMutations().then(() => queryClient.invalidateQueries())
+  }, [hydrated, isRestoring, user?.id, user?.role])
+
   // Register push token when the user is authenticated.
   useEffect(() => {
     if (!user) return
@@ -143,10 +175,13 @@ function InitialLayout() {
     if (!segments.length) return
 
     const inAuth = segments[0] === '(auth)'
+    if (inAuth && segments[1] === 'portal') return
     if (!user && !inAuth) {
       router.replace('/(auth)/login')
     } else if (user && inAuth) {
       router.replace('/(app)')
+    } else if ((user?.role === 'FINANCE' || user?.role === 'SUPPORT') && !['workspace', 'operations', 'settings'].includes(segments[1] ?? '')) {
+      router.replace((user.role === 'FINANCE' ? '/(app)/workspace?module=receipts' : '/(app)/operations?module=support') as never)
     }
   }, [user, segments, hydrated])
 
@@ -172,18 +207,11 @@ export default function RootLayout() {
             // Persist success-only queries and paused mutations. Skip errored
             // queries — they're usually transient and replaying them can flash
             // stale error UI before the fresh fetch lands.
-            shouldDehydrateQuery: (query) => query.state.status === 'success',
+            shouldDehydrateQuery: query => query.state.status === 'success' && !query.meta?.skipPersist,
+            shouldDehydrateMutation: mutation => !!syncLabel(mutation.options.mutationKey) && (mutation.state.isPaused || mutation.state.status === 'error'),
           },
         }}
         onSuccess={() => {
-          // Cache is rehydrated + paused mutations are in memory — kick off
-          // their replay. onlineManager gates this; when offline the calls
-          // stay paused and re-fire as soon as NetInfo flips to reachable.
-          queryClient.resumePausedMutations().then(() => {
-            queryClient.invalidateQueries()
-          })
-          // Also trigger a focused refetch in case the app was backgrounded
-          // during hydrate.
           focusManager.setFocused(true)
         }}
       >

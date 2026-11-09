@@ -111,7 +111,7 @@ export const authService = {
     const accessToken = signAccess({ id: user.id, email: user.email, role: user.role })
     // Return the same refresh token — the client should keep using it until
     // it expires or the user logs out.
-    return { accessToken, refreshToken }
+    return { accessToken, refreshToken, user: { id: user.id, name: user.name, email: user.email, role: user.role } }
   },
 
   /** Revoke the given refresh token (logout). */

@@ -6,24 +6,26 @@ import { useQuery } from '@tanstack/react-query'
 import { DrawerContent } from '@/components/layout/DrawerContent'
 import { OfflineStatusPill } from '@/components/shared/OfflineStatusPill'
 import { C } from '@/lib/colors'
-import { useAuthStore } from '@/store/auth.store'
 import { api } from '@/lib/api'
-import type { DashboardStats } from '@lms/shared'
+import type { WorkspacePage } from '@lms/shared'
 
 function HeaderRight() {
   const router = useRouter()
-  const { data } = useQuery<DashboardStats>({
-    queryKey: ['dashboard'],
-    queryFn: () => api.get('/dashboard/stats').then((r) => r.data),
+  const { data } = useQuery<WorkspacePage>({
+    queryKey: ['workspace', 'inbox', '', '', ''],
+    meta: { skipPersist: true },
+    queryFn: () => api.get('/workspace/inbox').then((r) => r.data),
     staleTime: 60_000,
   })
-  const count = (data?.pendingTasks ?? 0) + (data?.overdueTasksCount ?? 0)
+  const count = data?.sections.find(section => section.title === 'Unread')?.cards.length ?? 0
 
   return (
     <View style={s.headerRight}>
       <OfflineStatusPill />
       <Pressable
-        onPress={() => router.push('/(app)/tasks')}
+        accessibilityRole="button"
+        accessibilityLabel="Notification inbox"
+        onPress={() => router.push('/(app)/workspace?module=inbox' as never)}
         hitSlop={10}
         style={({ pressed }) => [s.bellWrap, pressed && { opacity: 0.6 }]}
       >
@@ -56,6 +58,9 @@ export default function AppLayout() {
       <Drawer.Screen name="schools"     options={{ title: 'Schools' }} />
       <Drawer.Screen name="quotations"  options={{ title: 'Quotations' }} />
       <Drawer.Screen name="agreements"  options={{ title: 'Agreements' }} />
+      <Drawer.Screen name="sync" options={{ title: 'Sync queue' }} />
+      <Drawer.Screen name="workspace" options={{ title: 'Account workspace' }} />
+      <Drawer.Screen name="operations" options={{ title: 'School operations' }} />
       <Drawer.Screen name="tasks"       options={{ title: 'Tasks' }} />
       <Drawer.Screen name="reports"     options={{ title: 'Reports' }} />
       <Drawer.Screen name="activity"    options={{ title: 'Activity Log' }} />

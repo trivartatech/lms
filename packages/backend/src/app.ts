@@ -1,3 +1,5 @@
+import { portalAuthenticate } from './routes/portal.routes'
+import { authenticate } from './middleware/auth.middleware'
 import express from 'express'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -33,8 +35,6 @@ app.use(cors({
   credentials: true,
 }))
 app.use(morgan('dev'))
-app.use(express.json({ limit: '1mb' }))
-app.use(cookieParser())
 
 // ── Rate limiting ────────────────────────────────────────────────────────────
 // Aggressive on auth, moderate on the rest of the API.
@@ -60,6 +60,12 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }))
 app.use('/api/auth/login',   authLimiter)
 app.use('/api/auth/refresh', authLimiter)
 app.use('/api', apiLimiter)
+app.use('/api/operations/files', authenticate, express.json({ limit: '7mb' }))
+app.use('/api/workspace/receipts', authenticate, express.json({ limit: '7mb' }))
+app.use('/api/portal/documents', portalAuthenticate, express.json({ limit: '7mb' }))
+app.post('/api/portal/tickets', portalAuthenticate, express.json({ limit: '7mb' }))
+app.use(express.json({ limit: '1mb' }))
+app.use(cookieParser())
 
 app.use('/api', routes)
 

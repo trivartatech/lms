@@ -1,3 +1,4 @@
+import { assignedRecord } from '../middleware/workspace-access'
 import { agreementPaymentsService } from '../services/agreement-payments.service'
 import { apiNumbers } from '../lib/api-numbers'
 import { Router } from 'express'
@@ -9,7 +10,7 @@ import { agreementListQuerySchema } from '../validators/queries'
 
 const router = Router()
 
-router.use(authenticate)
+router.use(authenticate, assignedRecord('agreement'))
 router.use(idempotency)
 
 router.get('/', validate(agreementListQuerySchema, 'query'), agreementsController.getAll)

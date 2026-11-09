@@ -43,6 +43,14 @@
         {
           "locationWhenInUsePermission": "Allow LMS to save the school GPS pin while you are at the school."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow LMS to capture school documents and support photos.",
+          "microphonePermission": false,
+          "photosPermission": "Allow LMS to select school photos."
+        }
       ]
     ],
     "extra": {

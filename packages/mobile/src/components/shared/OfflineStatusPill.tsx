@@ -1,6 +1,8 @@
+import { useRouter } from 'expo-router'
+import { syncLabel } from '@/lib/sync-queue'
 import { useEffect, useState } from 'react'
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native'
-import { onlineManager, useIsMutating } from '@tanstack/react-query'
+import { Pressable, Text, StyleSheet, ActivityIndicator } from 'react-native'
+import { onlineManager, useIsMutating, useMutationState } from '@tanstack/react-query'
 import { CloudOff, RotateCw } from 'lucide-react-native'
 import { C } from '@/lib/colors'
 
@@ -31,26 +33,30 @@ function useOnline(): boolean {
 }
 
 export function OfflineStatusPill() {
+  const router = useRouter()
+  const open = () => router.push('/(app)/sync' as never)
+  const failed = useMutationState({ filters: { status: 'error', predicate: m => !!syncLabel(m.options.mutationKey) } }).length
   const online = useOnline()
   const pending = useIsMutating()
 
   // Happy path: online, nothing queued → render nothing so the header stays clean.
-  if (online && pending === 0) return null
+  if (online && pending === 0 && !failed) return null
+  if (failed) return <Pressable accessibilityRole="button" onPress={open} style={[s.pill, s.offline]}><Text style={[s.text, s.offlineText]}>{failed} sync failed</Text></Pressable>
 
   if (!online) {
     return (
-      <View style={[s.pill, s.offline]}>
+      <Pressable accessibilityRole="button" onPress={open} style={[s.pill, s.offline]}>
         <CloudOff size={13} color={C.warningText} />
         <Text style={[s.text, s.offlineText]}>
           Offline{pending > 0 ? ` · ${pending}` : ''}
         </Text>
-      </View>
+      </Pressable>
     )
   }
 
   // Online with pending mutations → syncing.
   return (
-    <View style={[s.pill, s.syncing]}>
+    <Pressable accessibilityRole="button" onPress={open} style={[s.pill, s.syncing]}>
       {pending > 0 ? (
         <ActivityIndicator size="small" color={C.info} />
       ) : (
@@ -59,7 +65,7 @@ export function OfflineStatusPill() {
       <Text style={[s.text, s.syncingText]}>
         Syncing{pending > 0 ? ` ${pending}` : '…'}
       </Text>
-    </View>
+    </Pressable>
   )
 }
 

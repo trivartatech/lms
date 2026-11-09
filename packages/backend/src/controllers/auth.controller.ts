@@ -40,6 +40,7 @@ export const authController = {
       res.json({
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
+        user: result.user,
       })
     } catch (err) {
       // On refresh failure clear the cookie so client returns to login cleanly

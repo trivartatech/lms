@@ -9,10 +9,10 @@ const schoolInclude = {
 }
 
 export const schoolsService = {
-  async getAll(params: { search?: string; page?: number; limit?: number }) {
+  async getAll(params: { search?: string; assignedToId?: number; page?: number; limit?: number }) {
     const { page = 1, limit = 20, search } = params
     const skip = (page - 1) * limit
-    const where: any = {}
+    const where: any = { assignedToId: params.assignedToId }
     if (search) {
       where.OR = [
         { name: { contains: search } },

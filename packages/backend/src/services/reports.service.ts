@@ -1,7 +1,11 @@
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../config/prisma'
 
 export const reportsService = {
-  async getDashboardStats() {
+  async getDashboardStats(ownerId?: number) {
+    const owned = ownerId ? { assignedToId: ownerId } : {}
+    const school = ownerId ? { school: owned } : {}
+    const referrals = ownerId ? { referringSchool: owned } : {}
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -13,7 +17,6 @@ export const reportsService = {
       totalSchools,
       pendingTasks,
       openDeals,
-      referralStats,
       topReferrers,
       revenueAgg,
       pipelineByStageRaw,
@@ -21,44 +24,44 @@ export const reportsService = {
       upcomingRenewalsRaw,
       tasksDueToday,
     ] = await Promise.all([
-      prisma.lead.count(),
-      prisma.lead.count({ where: { createdAt: { gte: startOfMonth } } }),
-      prisma.school.count(),
-      prisma.task.count({ where: { status: 'PENDING' } }),
-      prisma.lead.count({ where: { status: { notIn: ['CONVERTED', 'LOST'] } } }),
-      prisma.referralIncentive.aggregate({ _count: { id: true } }),
+      prisma.lead.count({ where: owned }),
+      prisma.lead.count({ where: { ...owned, createdAt: { gte: startOfMonth } } }),
+      prisma.school.count({ where: owned }),
+      prisma.task.count({ where: { ...owned, status: 'PENDING' } }),
+      prisma.lead.count({ where: { ...owned, status: { notIn: ['CONVERTED', 'LOST'] } } }),
       prisma.referralIncentive.groupBy({
         by: ['referringSchoolId'],
+        where: referrals,
         _count: { id: true },
         orderBy: { _count: { id: 'desc' } },
         take: 5,
       }),
-      prisma.agreement.aggregate({ _sum: { value: true } }),
+      prisma.agreement.aggregate({ where: school, _sum: { value: true } }),
       prisma.lead.groupBy({
         by: ['pipelineStage'],
         _count: { id: true },
-        where: { status: { notIn: ['CONVERTED', 'LOST'] } },
+        where: { ...owned, status: { notIn: ['CONVERTED', 'LOST'] } },
       }),
-      prisma.task.count({ where: { dueDate: { lt: now }, status: 'PENDING' } }),
+      prisma.task.count({ where: { ...owned, dueDate: { lt: now }, status: 'PENDING' } }),
       prisma.agreement.findMany({
-        where: { renewalDate: { gte: now, lte: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) }, status: 'ACTIVE' },
+        where: { ...school, renewalDate: { gte: now, lte: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000) }, status: 'ACTIVE' },
         include: { school: { select: { id: true, name: true } } },
         orderBy: { renewalDate: 'asc' },
         take: 5,
       }),
-      prisma.task.count({ where: { dueDate: { gte: startOfToday, lt: endOfToday }, status: 'PENDING' } }),
+      prisma.task.count({ where: { ...owned, dueDate: { gte: startOfToday, lt: endOfToday }, status: 'PENDING' } }),
     ])
 
     const [totalReferrals, convertedReferrals, pendingCommissionAgg, paidCommissionAgg] = await Promise.all([
-      prisma.referralIncentive.count(),
-      prisma.referralIncentive.count({ where: { convertedSchoolId: { not: null } } }),
+      prisma.referralIncentive.count({ where: referrals }),
+      prisma.referralIncentive.count({ where: { ...referrals, convertedSchoolId: { not: null } } }),
       prisma.referralIncentive.aggregate({
         _sum: { calculatedCommission: true },
-        where: { payoutStatus: 'PENDING', calculatedCommission: { not: null } },
+        where: { ...referrals, payoutStatus: 'PENDING', calculatedCommission: { not: null } },
       }),
       prisma.referralIncentive.aggregate({
         _sum: { calculatedCommission: true },
-        where: { payoutStatus: 'PAID', calculatedCommission: { not: null } },
+        where: { ...referrals, payoutStatus: 'PAID', calculatedCommission: { not: null } },
       }),
     ])
 
@@ -102,10 +105,12 @@ export const reportsService = {
     }
   },
 
-  async getActivityFeed(params: { page?: number; limit?: number; leadId?: number; schoolId?: number }) {
-    const { page = 1, limit = 30, leadId, schoolId } = params
+  async getActivityFeed(params: { page?: number; limit?: number; leadId?: number; schoolId?: number; ownerId?: number }) {
+    const { page = 1, limit = 30, leadId, schoolId, ownerId } = params
     const skip = (page - 1) * limit
-    const where: any = {}
+    const where: Prisma.TimelineEventWhereInput = ownerId ? { OR: [
+      { school: { assignedToId: ownerId } }, { schoolId: null, lead: { assignedToId: ownerId } },
+    ] } : {}
     if (leadId) where.leadId = leadId
     if (schoolId) where.schoolId = schoolId
 

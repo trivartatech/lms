@@ -1,3 +1,6 @@
+import { quotationScope } from '../middleware/workspace-access'
+import { env } from '../config/env'
+import { assertDispatchAllowed, quotationWorkflow } from '../services/quotation-workflow.service'
 import { apiNumbers } from '../lib/api-numbers'
 import { Request, Response, NextFunction } from 'express'
 import { quotationsService } from '../services/quotations.service'
@@ -13,7 +16,7 @@ export const quotationsController = {
       const result = await quotationsService.getAll({
         leadId: leadId ? parseInt(leadId) : undefined,
         schoolId: schoolId ? parseInt(schoolId) : undefined,
-      })
+      }, quotationScope(req.user))
       res.json(apiNumbers(result))
     } catch (err) {
       next(err)
@@ -74,6 +77,7 @@ export const quotationsController = {
       if (!to) throw new AppError(400, 'Recipient "to" is required')
 
       const quotation = await quotationsService.getById(id)
+      assertDispatchAllowed(quotation)
       const finalSubject = subject ?? `Quotation #${id}`
       const finalText = message ?? `Please find attached Quotation #${id}.\n\nTotal: ₹${quotation.total}`
 
@@ -85,10 +89,13 @@ export const quotationsController = {
           }]
         : undefined
 
+      if (!env.SMTP_HOST || !env.SMTP_USER) throw new AppError(503, 'Quotation email delivery is not configured')
       const result = await mailerService.send({ to, subject: finalSubject, text: finalText, attachments })
 
+      if (!result.accepted?.length) throw new AppError(502, 'The mail server did not accept the quotation')
+
       // Update status + timeline
-      await quotationsService.update(id, { status: 'SENT' }, req.user.id)
+      await quotationWorkflow.dispatched(quotation, 'EMAIL', req.user.id, pdfBase64)
       const entity = quotation.leadId ? { leadId: quotation.leadId } : { schoolId: quotation.schoolId ?? undefined }
       await timelineService.logEvent({
         ...entity,
@@ -114,9 +121,12 @@ export const quotationsController = {
       if (!phone) throw new AppError(400, 'Recipient "phone" is required')
 
       const quotation = await quotationsService.getById(id)
+      assertDispatchAllowed(quotation)
       const body = message ?? `Quotation #${id} — Total ₹${quotation.total}. Reply for details.`
 
+      if (!mag91Service.configured) throw new AppError(503, 'Quotation WhatsApp delivery is not configured')
       const result = await mag91Service.sendText({ phone, message: body })
+      await quotationWorkflow.dispatched(quotation, 'WHATSAPP', req.user.id)
 
       const entity = quotation.leadId ? { leadId: quotation.leadId } : { schoolId: quotation.schoolId ?? undefined }
       await timelineService.logEvent({

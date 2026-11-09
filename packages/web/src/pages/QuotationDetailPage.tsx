@@ -1,3 +1,4 @@
+import { QuotationWorkflowPanel } from '@/components/quotations/QuotationWorkflowPanel'
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -58,9 +59,21 @@ export function QuotationDetailPage() {
     return <div className="py-12 text-center text-muted-foreground">Quotation not found</div>
   }
 
+  async function prepareExport() {
+    try {
+      await api.post('/quotations/' + quotation!.id + '/shared', { updatedAt: quotation!.updatedAt })
+      void queryClient.invalidateQueries({ queryKey: ['quotations', 'workflow', quotation!.id] })
+      return true
+    } catch (error) {
+      toast.error((error as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Could not prepare this quotation')
+      return false
+    }
+  }
+
   const handlePrint = async () => {
     if (!quotation) return
     setPrintLoading(true)
+    if (!await prepareExport()) { setPrintLoading(false); return }
     try {
       const { printQuotationPDF } = await import('@/components/quotations/QuotationPDF')
       await printQuotationPDF(quotation)
@@ -74,6 +87,7 @@ export function QuotationDetailPage() {
   const handleDownloadPDF = async () => {
     if (!quotation) return
     setPdfLoading(true)
+    if (!await prepareExport()) { setPdfLoading(false); return }
     try {
       const { downloadQuotationPDF } = await import('@/components/quotations/QuotationPDF')
       await downloadQuotationPDF(quotation)
@@ -161,6 +175,8 @@ export function QuotationDetailPage() {
             </Button>
           </div>
         </div>
+
+        <QuotationWorkflowPanel quotation={quotation} />
 
         {/* ── Print header (visible only when printing) ── */}
         <div className="hidden print:block mb-4">

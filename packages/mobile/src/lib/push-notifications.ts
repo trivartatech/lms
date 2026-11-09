@@ -16,6 +16,7 @@ import { api } from './api'
 
 let cachedToken: string | null = null
 let handlerConfigured = false
+let lastPortalNotification: string | undefined
 let responseSub: { remove: () => void } | null = null
 
 function loadNotifications(): any | null {
@@ -50,7 +51,7 @@ export function configureNotificationHandler() {
   handlerConfigured = true
 }
 
-export async function registerForPushAsync(): Promise<string | null> {
+export async function registerForPushAsync(askPermission = true): Promise<string | null> {
   if (cachedToken) return cachedToken
   if (Platform.OS === 'web') return null
 
@@ -74,7 +75,7 @@ export async function registerForPushAsync(): Promise<string | null> {
 
   const existing = await Notifications.getPermissionsAsync()
   let status = existing.status
-  if (status !== 'granted') {
+  if (status !== 'granted' && askPermission) {
     const req = await Notifications.requestPermissionsAsync()
     status = req.status
   }
@@ -141,8 +142,16 @@ export function attachNotificationTapListener(router: { push: (href: string) => 
 
   const handle = (response: any) => {
     const data = response?.notification?.request?.content?.data ?? {}
+    if (Number.isSafeInteger(data.portalTicketId) && data.portalTicketId > 0) {
+      const notificationId = response?.notification?.request?.identifier
+      if (notificationId && notificationId === lastPortalNotification) return
+      lastPortalNotification = notificationId
+      router.push('/(auth)/portal?ticket=' + encodeURIComponent(data.portalTicketId))
+      void Notifications.clearLastNotificationResponseAsync?.().catch(() => {})
+      return
+    }
     if (data?.taskId) {
-      router.push('/(app)/tasks')
+      router.push('/(app)/tasks?task=' + encodeURIComponent(data.taskId))
       return
     }
     if (data?.leadId) {

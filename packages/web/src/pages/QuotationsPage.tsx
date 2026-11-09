@@ -18,11 +18,15 @@ const statusVariant: Record<string, any> = {
 export function QuotationsPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
+  const [pendingOnly, setPendingOnly] = useState(false)
 
   const { data: quotations, isLoading } = useQuery<Quotation[]>({
     queryKey: ['quotations'],
     queryFn: () => api.get('/quotations').then((r) => r.data),
   })
+
+  const pendingCount = quotations?.filter(q => q.approvalStatus === 'PENDING').length ?? 0
+  const visible = pendingOnly ? quotations?.filter(q => q.approvalStatus === 'PENDING') : quotations
 
   return (
     <div className="space-y-4">
@@ -36,11 +40,12 @@ export function QuotationsPage() {
         </Button>
       </div>
 
+      <Button variant={pendingOnly ? 'default' : 'outline'} size="sm" onClick={() => setPendingOnly(v => !v)}>Awaiting approval ({pendingCount})</Button>
       {isLoading ? (
         <TableSkeleton rows={6} cols={4} />
       ) : (
         <div className="space-y-3">
-          {quotations?.map((q) => {
+          {visible?.map((q) => {
             const entityName = q.lead?.schoolName ?? q.school?.name ?? `Quotation #${q.id}`
             const isLead = !!q.lead
             const entityId = q.lead?.id ?? q.school?.id
@@ -79,6 +84,7 @@ export function QuotationsPage() {
                     <div className="flex items-center gap-4">
                       <span className="font-semibold">{formatCurrency(q.total)}</span>
                       <Badge variant={statusVariant[q.status]}>{q.status}</Badge>
+                      {q.approvalStatus === 'PENDING' && <Badge variant="outline">Approval pending</Badge>}
                       <span className="text-xs text-primary font-medium flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         View <ChevronRight className="h-3.5 w-3.5" />
                       </span>
@@ -88,7 +94,7 @@ export function QuotationsPage() {
               </Link>
             )
           })}
-          {(!quotations || quotations.length === 0) && (
+          {(!visible || visible.length === 0) && (
             <div className="text-center py-12 text-muted-foreground border rounded-md bg-muted/20">
               No quotations yet
             </div>

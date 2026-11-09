@@ -1,3 +1,4 @@
+import { confirmLeadEntry } from '@/lib/lead-entry'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -58,6 +59,7 @@ export function AddReferralDialog({ open, onClose, onSuccess, schoolId, schoolNa
   })
 
   const onSubmit = async (data: FormData) => {
+    if (!await confirmLeadEntry(data)) return
     await api.post(`/schools/${schoolId}/referrals`, {
       ...data,
       totalStudents: data.totalStudents ? Number(data.totalStudents) : undefined,

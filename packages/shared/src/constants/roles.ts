@@ -1,7 +1,9 @@
-export type Role = 'ADMIN' | 'SALES_MANAGER' | 'SALES_EXECUTIVE'
+export type Role = 'ADMIN' | 'SALES_MANAGER' | 'SALES_EXECUTIVE' | 'FINANCE' | 'SUPPORT'
 
 export const ROLES: Record<Role, Role> = {
   ADMIN: 'ADMIN',
   SALES_MANAGER: 'SALES_MANAGER',
   SALES_EXECUTIVE: 'SALES_EXECUTIVE',
+  FINANCE: 'FINANCE',
+  SUPPORT: 'SUPPORT',
 }

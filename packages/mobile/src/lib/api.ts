@@ -47,7 +47,9 @@ api.interceptors.response.use(
             if (!refreshToken) throw new Error('No refresh token')
             const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken }, { timeout: 15000 })
             if (useAuthStore.getState().refreshToken === refreshToken) {
-              useAuthStore.getState().setTokens(data.accessToken, data.refreshToken ?? refreshToken)
+              const auth = useAuthStore.getState()
+              if (data.user) auth.setAuth(data.accessToken, data.refreshToken ?? refreshToken, data.user)
+              else auth.setTokens(data.accessToken, data.refreshToken ?? refreshToken)
             }
           })().finally(() => { refreshPromise = null })
         }

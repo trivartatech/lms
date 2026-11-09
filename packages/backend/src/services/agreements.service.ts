@@ -5,9 +5,9 @@ import { timelineService, computeDiff } from './timeline.service'
 import { Decimal } from '@prisma/client/runtime/library'
 
 export const agreementsService = {
-  async getAll(params: { schoolId?: number }) {
+  async getAll(params: { schoolId?: number }, ownerId?: number) {
     return prisma.agreement.findMany({
-      where: params,
+      where: { ...params, school: ownerId ? { assignedToId: ownerId } : undefined },
       include: {
         school: {
           select: {

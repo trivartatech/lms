@@ -40,7 +40,7 @@ interface User {
   id: number
   name: string
   email: string
-  role: 'ADMIN' | 'SALES_MANAGER' | 'SALES_EXECUTIVE'
+  role: Role
 }
 
 interface Tier {
@@ -65,7 +65,7 @@ const DEFAULT_TIERS: Tier[] = [
   { label: 'Enterprise', maxStudents: 999999, price: 0 },
 ]
 
-const ROLES = ['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE'] as const
+const ROLES = ['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'FINANCE', 'SUPPORT'] as const
 type Role = typeof ROLES[number]
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -73,6 +73,7 @@ type Role = typeof ROLES[number]
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.role === 'ADMIN'
+  const limited = user?.role === 'FINANCE' || user?.role === 'SUPPORT'
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -84,10 +85,10 @@ export default function SettingsScreen() {
         {isAdmin && <UsersSection />}
 
         {/* Section 2: ERP Products */}
-        <AddonSection category="ERP" isAdmin={isAdmin} />
+        {!limited && <AddonSection category="ERP" isAdmin={isAdmin} />}
 
         {/* Section 3: Add-On Services */}
-        <AddonSection category="ADDON" isAdmin={isAdmin} />
+        {!limited && <AddonSection category="ADDON" isAdmin={isAdmin} />}
 
         {/* Section 4: Change Password */}
         <ChangePasswordSection />

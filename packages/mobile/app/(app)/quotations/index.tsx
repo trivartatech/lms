@@ -143,6 +143,7 @@ export default function QuotationsScreen() {
                 <View style={s.cardRight}>
                   <Text style={s.cardTotal}>{formatCurrency(qt.total)}</Text>
                   <StatusBadge status={qt.status} size="sm" />
+                  {qt.approvalStatus === 'PENDING' && <Text style={{ color: C.warningText }}>Approval pending</Text>}
                 </View>
               </View>
 

@@ -1,3 +1,4 @@
+import { Link } from 'expo-router'
 import { useState } from 'react'
 import {
   View,
@@ -190,6 +191,8 @@ export default function LoginScreen() {
               )}
             </Pressable>
           </View>
+
+          <Link href="/(auth)/portal" style={{ color: C.primary, textAlign: 'center', padding: 12 }}>School contact sign-in</Link>
 
           {/* ── Demo hint ── */}
           <View style={s.hintBox}>

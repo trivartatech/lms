@@ -16,3 +16,8 @@ export * from './types/report.types'
 export * from './types/contact.types'
 
 export * from './task-scheduling'
+
+export * from './types/school-operations'
+export * from './types/quotation-workflow'
+export * from './types/lead-duplicates'
+export * from './types/workspace'

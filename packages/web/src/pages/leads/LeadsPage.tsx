@@ -1,3 +1,4 @@
+import { confirmLeadEntry } from '@/lib/lead-entry'
 import { pipelineStageLabel } from '@lms/shared'
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -109,8 +110,9 @@ export function LeadsPage() {
   })
 
   const importMutation = useMutation({
-    mutationFn: (rows: object[]) => api.post('/leads/import', rows),
+    mutationFn: async (rows: object[]) => await confirmLeadEntry(rows) ? api.post('/leads/import', rows) : null,
     onSuccess: (res) => {
+      if (!res) return
       setImportStatus(`Successfully imported ${res.data.imported} leads.`)
       queryClient.invalidateQueries({ queryKey: ['leads'] })
     },

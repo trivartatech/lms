@@ -18,6 +18,10 @@ datasource db {
 // PayoutStatus: PENDING | PAID
 
 model User {
+  renewals RenewalCase[]
+  salesTargets SalesTarget[]
+  inboxReads InboxRead[]
+  assignedWork SchoolWork[]
   id           Int      @id @default(autoincrement())
   name         String
   email        String   @unique
@@ -98,6 +102,7 @@ model Lead {
 }
 
 model Contact {
+  portalAccess SchoolPortalAccess?
   id          Int     @id @default(autoincrement())
   name        String
   phone       String
@@ -120,6 +125,12 @@ model Contact {
 }
 
 model School {
+  portalQuotes PortalQuote[]
+  portalDocuments PortalDocument[]
+  orders SchoolOrder[]
+  territoryLink TerritorySchool?
+  work SchoolWork[]
+  files SchoolFile[]
   id            Int     @id @default(autoincrement())
   name          String
   contactPerson String  @map("contact_person")
@@ -162,6 +173,11 @@ model School {
 }
 
 model Quotation {
+  order SchoolOrder?
+  versions QuotationVersion[]
+  approvalStatus String @default("NONE")
+  approvedById Int?
+  approvedAt DateTime?
   id       Int     @id @default(autoincrement())
   leadId   Int?    @map("lead_id")
   lead     Lead?   @relation(fields: [leadId], references: [id], onDelete: Cascade)
@@ -200,6 +216,9 @@ model QuotationItem {
 }
 
 model Agreement {
+  renewalCase RenewalCase?
+  orders SchoolOrder[]
+  work SchoolWork[]
   payments AgreementPayment[]
   renewalReminders AgreementRenewalReminder[]
   id          Int      @id @default(autoincrement())
@@ -349,6 +368,8 @@ model TimelineEvent {
 }
 
 model AgreementPayment {
+  review PaymentReview?
+  followUps SchoolWork[]
   id Int @id @default(autoincrement())
   agreementId Int @map("agreement_id")
   agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
@@ -371,4 +392,279 @@ model AgreementRenewalReminder {
   taskId Int @unique @map("task_id")
   @@unique([agreementId, renewalDate, daysBefore])
   @@map("agreement_renewal_reminders")
+}
+
+model SchoolWork {
+  id Int @id @default(autoincrement())
+  schoolId Int
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  kind String
+  status String
+  title String
+  notes String?
+  outcome String?
+  dueAt DateTime?
+  checkedInAt DateTime?
+  latitude Float?
+  longitude Float?
+  assignedToId Int?
+  assignedTo User? @relation(fields: [assignedToId], references: [id])
+  agreementId Int?
+  agreement Agreement? @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  templateKey String?
+  paymentId Int?
+  payment AgreementPayment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  followUpTaskId Int?
+  createdById Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  files SchoolFile[]
+  events SchoolWorkEvent[]
+  messages SupportMessage[]
+  supportCategory String?
+  portalContactId Int?
+  portalRequestId String?
+  @@unique([portalContactId, portalRequestId])
+  @@unique([agreementId, templateKey])
+  @@index([kind, schoolId])
+  @@index([assignedToId])
+  @@index([paymentId])
+  @@map("school_work")
+}
+
+model SupportMessage {
+  id Int @id @default(autoincrement())
+  workId Int
+  work SchoolWork @relation(fields: [workId], references: [id], onDelete: Cascade)
+  senderType String
+  senderId Int
+  senderName String
+  requestId String
+  text String
+  createdAt DateTime @default(now())
+  portalReads PortalReplyRead[]
+  @@unique([workId, senderType, senderId, requestId])
+  @@index([workId, id])
+  @@index([senderType, id])
+  @@map("support_messages")
+}
+
+model SchoolFile {
+  portalDocument PortalDocument?
+  paymentProofs PaymentReview[]
+  id Int @id @default(autoincrement())
+  schoolId Int
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  workId Int?
+  work SchoolWork? @relation(fields: [workId], references: [id], onDelete: Cascade)
+  name String
+  category String
+  mimeType String
+  size Int
+  content Bytes
+  uploadedById Int
+  createdAt DateTime @default(now())
+  @@index([schoolId])
+  @@index([workId])
+  @@map("school_files")
+}
+
+model QuotationVersion {
+  portalQuote PortalQuote?
+  id Int @id @default(autoincrement())
+  quotationId Int
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  number Int
+  event String
+  snapshot String
+  createdById Int
+  createdAt DateTime @default(now())
+  @@unique([quotationId, number])
+  @@map("quotation_versions")
+}
+
+model SchoolWorkEvent {
+  id Int @id @default(autoincrement())
+  workId Int
+  work SchoolWork @relation(fields: [workId], references: [id], onDelete: Cascade)
+  status String
+  notes String?
+  createdById Int
+  createdAt DateTime @default(now())
+  @@index([workId, createdAt])
+  @@map("school_work_events")
+}
+
+model RenewalCase {
+  agreementId Int @id
+  agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  ownerId Int?
+  owner User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  stage String @default("UPCOMING")
+  risk String @default("NORMAL")
+  proposedValue Decimal?
+  notes String?
+  nextActionAt DateTime?
+  nextTaskId Int?
+  closedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@index([ownerId, nextActionAt])
+  @@map("renewal_cases")
+}
+
+model SchoolPortalAccess {
+  schoolId Int
+  id Int @id @default(autoincrement())
+  contactId Int @unique
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tokenHash String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  devices PortalPushDevice[]
+  readReplies PortalReplyRead[]
+  @@map("school_portal_access")
+}
+
+model PortalPushDevice {
+  token String @id
+  accessId Int
+  access SchoolPortalAccess @relation(fields: [accessId], references: [id], onDelete: Cascade)
+  @@index([accessId])
+  @@map("portal_push_devices")
+}
+
+model PortalReplyRead {
+  accessId Int
+  access SchoolPortalAccess @relation(fields: [accessId], references: [id], onDelete: Cascade)
+  messageId Int
+  message SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  @@id([accessId, messageId])
+  @@index([messageId])
+  @@map("portal_reply_reads")
+}
+
+model PortalQuote {
+  id Int @id @default(autoincrement())
+  schoolId Int
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  versionId Int @unique
+  version QuotationVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  response String @default("PENDING")
+  responseNote String?
+  respondedBy String?
+  respondedAt DateTime?
+  published Boolean @default(true)
+  createdAt DateTime @default(now())
+  @@index([schoolId, published])
+  @@map("portal_quotes")
+}
+
+model PortalDocument {
+  fileId Int @id
+  file SchoolFile @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  schoolId Int
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  uploadedBySchool Boolean @default(false)
+  createdAt DateTime @default(now())
+  @@index([schoolId])
+  @@map("portal_documents")
+}
+
+model SchoolOrder {
+  id Int @id @default(autoincrement())
+  schoolId Int
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  quotationId Int @unique
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Restrict)
+  versionNumber Int?
+  agreementId Int?
+  agreement Agreement? @relation(fields: [agreementId], references: [id], onDelete: SetNull)
+  items SchoolOrderItem[]
+  createdAt DateTime @default(now())
+  @@index([schoolId])
+  @@map("school_orders")
+}
+
+model SchoolOrderItem {
+  id Int @id @default(autoincrement())
+  orderId Int
+  order SchoolOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name String
+  quantity Int
+  seats Int?
+  activationDate DateTime?
+  activatedAt DateTime?
+  status String @default("PENDING")
+  blocker String?
+  updatedAt DateTime @updatedAt
+  @@index([orderId])
+  @@map("school_order_items")
+}
+
+model BankEntry {
+  id Int @id @default(autoincrement())
+  reference String @unique
+  amount Decimal
+  receivedAt DateTime
+  review PaymentReview?
+  createdAt DateTime @default(now())
+  @@map("bank_entries")
+}
+
+model PaymentReview {
+  paymentId Int @id
+  payment AgreementPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  reference String?
+  proofFileId Int?
+  proofFile SchoolFile? @relation(fields: [proofFileId], references: [id], onDelete: SetNull)
+  bankEntryId Int? @unique
+  bankEntry BankEntry? @relation(fields: [bankEntryId], references: [id], onDelete: Restrict)
+  matchedById Int?
+  matchedAt DateTime?
+  receiptNumber String? @unique
+  receiptIssuedAt DateTime?
+  updatedAt DateTime @updatedAt
+  @@map("payment_reviews")
+}
+
+model SalesTerritory {
+  id Int @id @default(autoincrement())
+  name String @unique
+  schools TerritorySchool[]
+  targets SalesTarget[]
+  @@map("sales_territories")
+}
+
+model TerritorySchool {
+  schoolId Int @id
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  territoryId Int
+  territory SalesTerritory @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+  @@index([territoryId])
+  @@map("territory_schools")
+}
+
+model SalesTarget {
+  id Int @id @default(autoincrement())
+  period String
+  subject String
+  salespersonId Int?
+  salesperson User? @relation(fields: [salespersonId], references: [id], onDelete: Cascade)
+  territoryId Int?
+  territory SalesTerritory? @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+  visits Int
+  conversions Int
+  collections Decimal
+  renewals Int
+  @@unique([period, subject])
+  @@map("sales_targets")
+}
+
+model InboxRead {
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key String
+  readAt DateTime @default(now())
+  @@id([userId, key])
+  @@map("inbox_reads")
 }

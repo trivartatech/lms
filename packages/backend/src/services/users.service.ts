@@ -1,3 +1,4 @@
+import { ROLES } from '@lms/shared'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/error.middleware'
@@ -20,12 +21,13 @@ export const usersService = {
   },
 
   async create(data: { name: string; email: string; password: string; role: string }) {
+    if (!Object.values(ROLES).some(role => role === data.role)) throw new AppError(400, 'Choose a valid role')
     const existing = await prisma.user.findUnique({ where: { email: data.email } })
     if (existing) throw new AppError(409, 'Email already in use')
 
     const passwordHash = await bcrypt.hash(data.password, 12)
     return prisma.user.create({
-      data: { name: data.name, email: data.email, passwordHash, role: data.role as any },
+      data: { name: data.name, email: data.email, passwordHash, role: data.role },
       select: { id: true, name: true, email: true, role: true, createdAt: true, updatedAt: true },
     })
   },
@@ -37,7 +39,10 @@ export const usersService = {
     const updateData: any = {}
     if (data.name) updateData.name = data.name
     if (data.email) updateData.email = data.email
-    if (data.role) updateData.role = data.role
+    if (data.role !== undefined) {
+      if (!Object.values(ROLES).some(role => role === data.role)) throw new AppError(400, 'Choose a valid role')
+      updateData.role = data.role
+    }
     if (data.password) updateData.passwordHash = await bcrypt.hash(data.password, 12)
 
     return prisma.user.update({

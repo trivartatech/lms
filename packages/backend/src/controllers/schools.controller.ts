@@ -7,7 +7,7 @@ export const schoolsController = {
     try {
       const { search, page, limit } = req.query as any
       const result = await schoolsService.getAll({
-        search,
+        search, assignedToId: req.user.role === 'SALES_EXECUTIVE' ? req.user.id : undefined,
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 20,
       })

@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useOfflineMutation } from '@/hooks/useOfflineMutation'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   Phone,
   Users,
@@ -757,6 +757,8 @@ const rs = StyleSheet.create({
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function TasksScreen() {
+  const router = useRouter()
+  const { task: focusTask } = useLocalSearchParams<{ task?: string }>()
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterTab>('ALL')
@@ -798,6 +800,7 @@ export default function TasksScreen() {
 
   // Apply filter then search
   const filtered = useMemo(() => {
+    if (focusTask) return (tasks ?? []).filter(task => String(task.id) === focusTask)
     let list = (tasks ?? []).filter(t => matchesTaskView(t, activeFilter))
     if (activeFilter === 'PENDING') list = list.filter((t) => t.status === 'PENDING')
     if (activeFilter === 'COMPLETED') list = list.filter((t) => t.status === 'COMPLETED')
@@ -807,7 +810,7 @@ export default function TasksScreen() {
       )
     }
     return list
-  }, [tasks, activeFilter, search])
+  }, [tasks, activeFilter, search, focusTask])
 
   if (isLoading) {
     return (
@@ -819,6 +822,9 @@ export default function TasksScreen() {
 
   return (
     <SafeAreaView style={s.safe} edges={['bottom']}>
+      {focusTask && <Pressable accessibilityRole="button" onPress={() => router.setParams({ task: '' })} style={{ padding: 12 }}>
+        <Text style={{ color: C.primary }}>Show all tasks</Text>
+      </Pressable>}
       {/* Search bar */}
       <View style={s.searchWrap}>
         <SearchBar

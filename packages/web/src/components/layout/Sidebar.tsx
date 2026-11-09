@@ -11,6 +11,7 @@ import {
   Kanban,
   Activity,
 } from 'lucide-react'
+import { useAuthStore } from '@/store/auth.store'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -19,6 +20,8 @@ const navItems = [
   { to: '/schools', icon: School, label: 'Schools' },
   { to: '/quotations', icon: FileText, label: 'Quotations' },
   { to: '/agreements', icon: FileCheck, label: 'Agreements' },
+  { to: '/workspace', icon: Users, label: 'Account workspace' },
+  { to: '/operations', icon: School, label: 'School operations' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { to: '/reports', icon: BarChart2, label: 'Reports' },
   { to: '/activity', icon: Activity, label: 'Activity Log' },
@@ -26,6 +29,9 @@ const navItems = [
 ]
 
 export function Sidebar() {
+  const role = useAuthStore(s => s.user?.role)
+  const limited = role === 'FINANCE' || role === 'SUPPORT'
+  const visible = limited ? navItems.filter(item => ['/workspace', '/operations', '/settings'].includes(item.to)) : navItems
   return (
     <aside className="fixed inset-y-0 left-0 z-40 w-60 border-r bg-background flex flex-col">
       <div className="flex h-16 items-center gap-2 border-b px-6">
@@ -34,7 +40,7 @@ export function Sidebar() {
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-3">
         <ul className="space-y-1">
-          {navItems.map((item) => (
+          {visible.map((item) => (
             <li key={item.to}>
               <NavLink
                 to={item.to}
@@ -48,7 +54,7 @@ export function Sidebar() {
                 }
               >
                 <item.icon className="h-4 w-4" />
-                {item.label}
+                {item.to === '/operations' && limited ? (role === 'FINANCE' ? 'Collections' : 'Assigned tickets') : item.label}
               </NavLink>
             </li>
           ))}

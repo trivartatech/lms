@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client'
+import { assertDispatchAllowed, quotationDetails, quotationWorkflow, recordQuotationVersion } from './quotation-workflow.service'
 import { validateQuotation } from '../validators/quotation'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/error.middleware'
@@ -5,9 +7,9 @@ import { timelineService } from './timeline.service'
 import { Decimal } from '@prisma/client/runtime/library'
 
 export const quotationsService = {
-  async getAll(params: { leadId?: number; schoolId?: number }) {
+  async getAll(params: { leadId?: number; schoolId?: number }, scope: Prisma.QuotationWhereInput = {}) {
     return prisma.quotation.findMany({
-      where: params,
+      where: { AND: [params, scope] },
       include: {
         items: true,
         lead: { select: { id: true, schoolName: true, contactPerson: true, phone: true, email: true, location: true, totalStudents: true } },
@@ -20,11 +22,7 @@ export const quotationsService = {
   async getById(id: number) {
     const q = await prisma.quotation.findUnique({
       where: { id },
-      include: {
-        items: true,
-        lead: { select: { id: true, schoolName: true, contactPerson: true, phone: true, email: true, location: true, totalStudents: true } },
-        school: { select: { id: true, name: true, contactPerson: true, phone: true, email: true, location: true, totalStudents: true } },
-      },
+      include: quotationDetails,
     })
     if (!q) throw new AppError(404, 'Quotation not found')
     return q
@@ -97,46 +95,65 @@ export const quotationsService = {
     },
     userId: number,
   ) {
-    const existing = await prisma.quotation.findUnique({ where: { id }, include: { items: true } })
-    if (!existing) throw new AppError(404, 'Quotation not found')
+    const { existing, quotation } = await prisma.$transaction(async tx => {
+      const existing = await tx.quotation.findUnique({ where: { id }, include: quotationDetails })
+      if (!existing) throw new AppError(404, 'Quotation not found')
 
-    validateQuotation({ items: (data.items ?? existing.items).map(item => ({ ...item, unitPrice: Number(item.unitPrice) })), discount: data.discount ?? Number(existing.discount), tax: data.tax ?? Number(existing.tax) })
-    const updateData: any = {}
-    if (data.status) updateData.status = data.status
+      validateQuotation({ items: (data.items ?? existing.items).map(item => ({ ...item, unitPrice: Number(item.unitPrice) })), discount: data.discount ?? Number(existing.discount), tax: data.tax ?? Number(existing.tax) })
+      const updateData: any = {}
+      if (data.status) updateData.status = data.status
 
-    if (data.items) {
-      const subtotal = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
-      const discountAmount = data.discount ?? Number(existing.discount)
-      const taxAmount = data.tax ?? Number(existing.tax)
-      const total = subtotal - discountAmount + taxAmount
+      if (data.items) {
+        const subtotal = data.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+        const discountAmount = data.discount ?? Number(existing.discount)
+        const taxAmount = data.tax ?? Number(existing.tax)
+        const total = subtotal - discountAmount + taxAmount
 
-      updateData.subtotal = new Decimal(subtotal)
-      updateData.discount = new Decimal(discountAmount)
-      updateData.tax = new Decimal(taxAmount)
-      updateData.total = new Decimal(total)
-      updateData.items = {
-        deleteMany: {},
-        create: data.items.map((item) => ({
-          name: item.name,
-          type: item.type,
-          quantity: item.quantity,
-          unitPrice: new Decimal(item.unitPrice),
-          total: new Decimal(item.quantity * item.unitPrice),
-        })),
+        updateData.subtotal = new Decimal(subtotal)
+        updateData.discount = new Decimal(discountAmount)
+        updateData.tax = new Decimal(taxAmount)
+        updateData.total = new Decimal(total)
+        updateData.items = {
+          deleteMany: {},
+          create: data.items.map((item) => ({
+            name: item.name,
+            type: item.type,
+            quantity: item.quantity,
+            unitPrice: new Decimal(item.unitPrice),
+            total: new Decimal(item.quantity * item.unitPrice),
+          })),
+        }
+      } else if (data.discount !== undefined || data.tax !== undefined) {
+        const subtotal = Number(existing.subtotal)
+        const discountAmount = data.discount ?? Number(existing.discount)
+        const taxAmount = data.tax ?? Number(existing.tax)
+        updateData.discount = new Decimal(discountAmount)
+        updateData.tax = new Decimal(taxAmount)
+        updateData.total = new Decimal(subtotal - discountAmount + taxAmount)
       }
-    } else if (data.discount !== undefined || data.tax !== undefined) {
-      const subtotal = Number(existing.subtotal)
-      const discountAmount = data.discount ?? Number(existing.discount)
-      const taxAmount = data.tax ?? Number(existing.tax)
-      updateData.discount = new Decimal(discountAmount)
-      updateData.tax = new Decimal(taxAmount)
-      updateData.total = new Decimal(subtotal - discountAmount + taxAmount)
-    }
 
-    const quotation = await prisma.quotation.update({
-      where: { id },
-      data: updateData,
-      include: { items: true },
+      const changesPricing = data.items !== undefined || data.discount !== undefined || data.tax !== undefined
+      if (changesPricing && data.status && data.status !== 'DRAFT') {
+        throw new AppError(400, 'Save pricing changes before marking the quotation sent')
+      }
+      const issuedStatus = existing.status === 'SENT' || existing.status === 'ACCEPTED' ? existing.status : undefined
+      if (changesPricing || (issuedStatus && data.status && data.status !== issuedStatus)) {
+        const versionCount = await tx.quotationVersion.count({ where: { quotationId: id } })
+        if (!versionCount) await recordQuotationVersion(tx, existing, issuedStatus ?? 'BASELINE', userId)
+      }
+      if (changesPricing) {
+        updateData.approvalStatus = 'NONE'
+        updateData.approvedById = null
+        updateData.approvedAt = null
+        updateData.status = 'DRAFT'
+      }
+      if (data.status === 'SENT' || (data.status === 'ACCEPTED' && existing.status !== 'ACCEPTED')) assertDispatchAllowed(existing)
+      if (data.status && !['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED'].includes(data.status)) throw new AppError(400, 'Invalid quotation status')
+      const quotation = await tx.quotation.update({ where: { id }, data: updateData, include: quotationDetails })
+      if (changesPricing) await recordQuotationVersion(tx, quotation, 'REVISION', userId)
+      if (data.status === 'SENT' && existing.status !== 'SENT') await recordQuotationVersion(tx, quotation, 'SENT', userId)
+      if (data.status === 'ACCEPTED' && existing.status !== 'ACCEPTED') await recordQuotationVersion(tx, quotation, 'ACCEPTED', userId)
+      return { existing, quotation }
     })
 
     if (data.status === 'SENT' && existing.leadId) {
@@ -163,9 +180,5 @@ export const quotationsService = {
     return quotation
   },
 
-  async remove(id: number) {
-    const q = await prisma.quotation.findUnique({ where: { id } })
-    if (!q) throw new AppError(404, 'Quotation not found')
-    await prisma.quotation.delete({ where: { id } })
-  },
+  remove: quotationWorkflow.remove,
 }

@@ -1,3 +1,4 @@
+import { confirmLeadEntry } from '@/lib/lead-entry'
 import { pipelineStageLabel } from '@lms/shared'
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -74,6 +75,7 @@ export function LeadReferralsTab({ leadId, leadName }: Props) {
   const bonusType = watch('bonusType')
 
   const onSubmit = async (data: FormData) => {
+    if (!await confirmLeadEntry(data)) return
     await api.post(`/leads/${leadId}/referrals`, {
       ...data,
       totalStudents: data.totalStudents ? Number(data.totalStudents) : undefined,

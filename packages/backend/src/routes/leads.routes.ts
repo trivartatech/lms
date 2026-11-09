@@ -1,3 +1,4 @@
+import { checkLeadDuplicates } from './lead-duplicates'
 import { leadAccess } from '../middleware/lead-access.middleware'
 import { Router } from 'express'
 import { leadsController } from '../controllers/leads.controller'
@@ -10,6 +11,7 @@ import { leadListQuerySchema } from '../validators/queries'
 const router = Router()
 
 router.use(authenticate)
+router.post('/duplicates/check', checkLeadDuplicates)
 router.use(leadAccess)
 router.use(idempotency)
 

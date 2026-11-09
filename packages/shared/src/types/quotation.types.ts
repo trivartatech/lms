@@ -20,6 +20,7 @@ export interface Quotation {
   tax: number
   total: number
   status: QuotationStatus
+  approvalStatus?: 'NONE' | 'PENDING' | 'APPROVED' | 'REJECTED'
   items: QuotationItem[]
   lead?: { id: number; schoolName: string; contactPerson: string; phone: string; email: string; location?: string | null; totalStudents?: number | null } | null
   school?: { id: number; name: string; contactPerson: string; phone: string; email: string; location?: string | null; totalStudents?: number | null } | null

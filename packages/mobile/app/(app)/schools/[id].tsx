@@ -1,3 +1,4 @@
+import { confirmLeadEntry } from '@/lib/lead-entry'
 import { AgreementPayments } from '@/components/shared/AgreementPayments'
 import { pipelineStageLabel } from '@lms/shared'
 import { SchoolGpsField, type GpsPin } from '@/components/shared/SchoolGpsField'
@@ -230,6 +231,8 @@ export default function SchoolDetailScreen() {
               <View style={{ marginTop: 6, marginBottom: 4 }}>
                 <ContactActions phone={school.phone} email={school.email ?? undefined} />
               </View>
+              <Pressable onPress={() => router.push(('/(app)/operations?school=' + school.id) as never)}><Text style={{ color: '#2563eb', paddingVertical: 10 }}>School operations</Text></Pressable>
+              <Pressable onPress={() => router.push(('/(app)/workspace?module=timeline&school=' + school.id) as never)}><Text style={{ color: '#2563eb', paddingVertical: 10 }}>School timeline</Text></Pressable>
               {school.latitude != null && school.longitude != null && <Pressable onPress={() => Linking.openURL('https://www.google.com/maps/search/?api=1&query=' + school.latitude + ',' + school.longitude).catch(() => Alert.alert('Maps', 'Unable to open Google Maps.'))}><Text style={{ color: '#2563eb', paddingVertical: 10 }}>Open Google Maps</Text></Pressable>}
               {school.location ? <InfoRow label="Location" value={school.location} /> : null}
               {school.totalStudents != null ? (
@@ -1677,8 +1680,8 @@ function ReferralFormModal({
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }))
 
   const mutation = useMutation({
-    mutationFn: () =>
-      api.post(`/schools/${schoolId}/referrals`, {
+    mutationFn: async () => {
+      const payload = {
         schoolName: form.schoolName.trim(),
         contactPerson: form.contactPerson.trim(),
         phone: form.phone.trim(),
@@ -1689,8 +1692,12 @@ function ReferralFormModal({
         bonusType: form.bonusType,
         bonusValue: parseFloat(form.bonusValue) || 0,
         assignedToId: form.assignedToId ?? undefined,
-      }),
-    onSuccess: () => {
+      }
+      return await confirmLeadEntry(payload) ? api.post(`/schools/${schoolId}/referrals`, payload) : null
+    },
+    retry: false,
+    onSuccess: (result) => {
+      if (!result) return
       setForm({
         schoolName: '', contactPerson: '', phone: '', email: '', location: '',
         totalStudents: '', notes: '', bonusType: 'FIXED', bonusValue: '0', assignedToId: null,

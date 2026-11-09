@@ -3,9 +3,9 @@ import { reportsService } from '../services/reports.service'
 import { referralsService } from '../services/referrals.service'
 
 export const reportsController = {
-  async getDashboardStats(_req: Request, res: Response, next: NextFunction) {
+  async getDashboardStats(req: Request, res: Response, next: NextFunction) {
     try {
-      res.json(await reportsService.getDashboardStats())
+      res.json(await reportsService.getDashboardStats(req.user.role === 'SALES_EXECUTIVE' ? req.user.id : undefined))
     } catch (err) {
       next(err)
     }
@@ -56,6 +56,7 @@ export const reportsController = {
       const { page, limit, leadId, schoolId } = req.query as any
       res.json(
         await reportsService.getActivityFeed({
+          ownerId: req.user.role === 'SALES_EXECUTIVE' ? req.user.id : undefined,
           page: page ? parseInt(page) : undefined,
           limit: limit ? parseInt(limit) : undefined,
           leadId: leadId ? parseInt(leadId) : undefined,

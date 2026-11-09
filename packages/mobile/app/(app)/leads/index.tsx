@@ -1,3 +1,4 @@
+import { confirmLeadEntry } from '@/lib/lead-entry'
 import { pipelineStageLabel } from '@lms/shared'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import {
@@ -98,8 +99,10 @@ function ImportModal({ visible, onClose }: ImportModalProps) {
   const [status, setStatus] = useState<string>('')
 
   const importMutation = useMutation({
-    mutationFn: (payload: object[]) => api.post('/leads/import', payload).then((r) => r.data),
-    onSuccess: (data: { imported: number }) => {
+    mutationFn: async (payload: object[]) => await confirmLeadEntry(payload) ? api.post('/leads/import', payload).then(r => r.data) : null,
+    retry: false,
+    onSuccess: (data: { imported: number } | null) => {
+      if (!data) return
       setStatus(`Successfully imported ${data.imported} lead${data.imported === 1 ? '' : 's'}.`)
       queryClient.invalidateQueries({ queryKey: ['leads'] })
     },
@@ -324,7 +327,10 @@ function LeadFormModal({ visible, onClose, onSaved, lead }: LeadFormModalProps) 
     }
   }, [visible, lead])
 
-  function handleSubmit() {
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false)
+
+  async function handleSubmit() {
+    if (checkingDuplicate || mutation.isPending) return
     if (!schoolName.trim()) return Alert.alert('Validation', 'School name is required.')
     if (!contactPerson.trim()) return Alert.alert('Validation', 'Contact person is required.')
     if (!phone.trim()) return Alert.alert('Validation', 'Phone is required.')
@@ -349,7 +355,11 @@ function LeadFormModal({ visible, onClose, onSaved, lead }: LeadFormModalProps) 
       dto.referredBySchoolId = null
       dto.referredByLeadId = null
     }
-    mutation.mutate(dto)
+    if (lead) { mutation.mutate(dto); return }
+    setCheckingDuplicate(true)
+    try {
+      if (await confirmLeadEntry(dto)) mutation.mutate(dto)
+    } finally { setCheckingDuplicate(false) }
   }
 
   const assignedUser = users.find((u) => u.id === assignedToId)
@@ -442,7 +452,7 @@ function LeadFormModal({ visible, onClose, onSaved, lead }: LeadFormModalProps) 
             <Pressable
               style={[fm.submit, mutation.isPending && fm.submitDisabled]}
               onPress={handleSubmit}
-              disabled={mutation.isPending}
+              disabled={mutation.isPending || checkingDuplicate}
             >
               {mutation.isPending
                 ? <ActivityIndicator color="#fff" />

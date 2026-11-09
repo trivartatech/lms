@@ -1,3 +1,6 @@
+import { QuotationWorkflowPanel } from '@/components/shared/QuotationWorkflowPanel'
+import { File, Paths } from 'expo-file-system'
+import type { QuotationVersion } from '@lms/shared'
 import { useState } from 'react'
 import {
   View,
@@ -53,6 +56,8 @@ interface LineItem {
 
 // ─── PDF Generator ────────────────────────────────────────────────────────────
 
+const escapeHtml = (value: unknown) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
 function generateQuotationHTML(quotation: Quotation): string {
   const entityName = quotation.lead?.schoolName ?? quotation.school?.name ?? 'N/A'
   const contactPerson = quotation.lead?.contactPerson ?? quotation.school?.contactPerson ?? 'N/A'
@@ -64,9 +69,9 @@ function generateQuotationHTML(quotation: Quotation): string {
     .map(
       (item, i) => `
       <tr style="background:${i % 2 === 0 ? '#f9fafb' : '#ffffff'}">
-        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${item.name}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">${escapeHtml(item.name)}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">
-          <span style="background:${item.type === 'ERP' ? '#dbeafe' : '#ede9fe'};color:${item.type === 'ERP' ? '#1d4ed8' : '#6d28d9'};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${item.type}</span>
+          <span style="background:${item.type === 'ERP' ? '#dbeafe' : '#ede9fe'};color:${item.type === 'ERP' ? '#1d4ed8' : '#6d28d9'};padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${escapeHtml(item.type)}</span>
         </td>
         <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:center;">${item.quantity}</td>
         <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">₹${item.unitPrice.toLocaleString('en-IN')}</td>
@@ -139,15 +144,15 @@ function generateQuotationHTML(quotation: Quotation): string {
   <div class="header-row">
     <div class="entity-block" style="flex:1;margin-right:24px;">
       <h3>Bill To</h3>
-      <div class="entity-name">${entityName}</div>
-      <div class="entity-sub">${contactPerson}</div>
-      <div class="entity-sub">${phone}</div>
-      ${location ? `<div class="entity-sub">${location}</div>` : ''}
+      <div class="entity-name">${escapeHtml(entityName)}</div>
+      <div class="entity-sub">${escapeHtml(contactPerson)}</div>
+      <div class="entity-sub">${escapeHtml(phone)}</div>
+      ${location ? `<div class="entity-sub">${escapeHtml(location)}</div>` : ''}
       ${totalStudents ? `<div class="entity-sub">${totalStudents} students</div>` : ''}
     </div>
     <div class="quot-meta">
       <div class="quot-id">Quotation #${quotation.id}</div>
-      <div><span class="status-badge">${quotation.status}</span></div>
+      <div><span class="status-badge">${escapeHtml(quotation.status)}</span></div>
       <div class="quot-date">Date: ${formatDate(quotation.createdAt)}</div>
     </div>
   </div>
@@ -221,13 +226,15 @@ export default function QuotationDetailScreen() {
       queryClient.invalidateQueries({ queryKey: ['quotations'] })
       setShowStatusPicker(false)
     },
-    onError: () => Alert.alert('Error', 'Failed to update status.'),
+    onError: (error: any) => Alert.alert('Quotation', error.response?.data?.message ?? 'Failed to update status.'),
   })
 
   const handleSharePDF = async () => {
     if (!quotation) return
     setGeneratingPDF(true)
     try {
+      await api.post('/quotations/' + quotation.id + '/shared', { updatedAt: quotation.updatedAt })
+      void queryClient.invalidateQueries({ queryKey: ['quotations', 'workflow', quotation.id] })
       const html = generateQuotationHTML(quotation)
       const { uri } = await Print.printToFileAsync({ html, base64: false })
       const canShare = await Sharing.isAvailableAsync()
@@ -240,11 +247,28 @@ export default function QuotationDetailScreen() {
       } else {
         Alert.alert('Sharing unavailable', 'Sharing is not available on this device.')
       }
-    } catch (err) {
-      Alert.alert('Error', 'Failed to generate PDF. Please try again.')
+    } catch (err: any) {
+      Alert.alert('Quotation', err.response?.data?.message ?? 'Failed to generate PDF. Please try again.')
     } finally {
       setGeneratingPDF(false)
     }
+  }
+
+  async function shareVersion(version: QuotationVersion) {
+    let file: File | undefined
+    try {
+      let uri: string
+      if (version.pdfBase64) {
+        file = new File(Paths.cache, 'quotation-' + version.quotation.id + '-v' + version.number + '-' + Date.now() + '.pdf')
+        file.write(version.pdfBase64, { encoding: 'base64' })
+        uri = file.uri
+      } else {
+        uri = (await Print.printToFileAsync({ html: generateQuotationHTML(version.quotation) })).uri
+      }
+      if (!await Sharing.isAvailableAsync()) throw new Error('Sharing is unavailable on this device')
+      await Sharing.shareAsync(uri, { mimeType: 'application/pdf' })
+    } catch { Alert.alert('Quotation', 'Could not open this version PDF.') }
+    finally { if (file?.exists) file.delete() }
   }
 
   if (isLoading || !quotation) return <LoadingSpinner />
@@ -396,6 +420,7 @@ export default function QuotationDetailScreen() {
           </View>
         </View>
 
+        <QuotationWorkflowPanel key={quotation.id} quotation={quotation} onShare={v => void shareVersion(v)} />
         <View style={{ height: 100 }} />
       </ScrollView>
 

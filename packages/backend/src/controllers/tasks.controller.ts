@@ -1,3 +1,4 @@
+import { taskScope } from '../middleware/workspace-access'
 import { Request, Response, NextFunction } from 'express'
 import { tasksService } from '../services/tasks.service'
 
@@ -10,7 +11,7 @@ export const tasksController = {
         schoolId: schoolId ? parseInt(schoolId) : undefined,
         assignedTo: assignedTo ? parseInt(assignedTo) : undefined,
         status,
-      })
+      }, taskScope(req.user))
       res.json(result)
     } catch (err) {
       next(err)

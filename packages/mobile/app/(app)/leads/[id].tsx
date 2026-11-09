@@ -1,3 +1,4 @@
+import { confirmLeadEntry } from '@/lib/lead-entry'
 import { useState, useEffect } from 'react'
 import {
   View,
@@ -1123,9 +1124,10 @@ function ReferralFormModal({ visible, leadId, onClose }: ReferralFormModalProps)
   }, [visible])
 
   const mutation = useMutation({
-    mutationFn: (dto: Record<string, unknown>) =>
-      api.post(`/leads/${leadId}/referrals`, dto).then((r) => r.data),
-    onSuccess: () => {
+    mutationFn: async (dto: Record<string, unknown>) => await confirmLeadEntry(dto) ? api.post(`/leads/${leadId}/referrals`, dto).then(r => r.data) : null,
+    retry: false,
+    onSuccess: (result) => {
+      if (!result) return
       queryClient.invalidateQueries({ queryKey: ['referrals', leadId] })
       onClose()
     },

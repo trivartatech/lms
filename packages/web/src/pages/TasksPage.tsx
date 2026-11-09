@@ -1,4 +1,5 @@
 import { matchesTaskView, type TaskView } from '@lms/shared'
+import { useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, CheckCircle, Phone, Users, Bell, CalendarClock } from 'lucide-react'
@@ -22,6 +23,8 @@ const typeIcon: Record<string, any> = {
 
 export function TasksPage() {
   const queryClient = useQueryClient()
+  const [params, setParams] = useSearchParams()
+  const focusTask = params.get('task')
   const [view, setView] = useState<TaskView>('TODAY')
   const [showForm, setShowForm] = useState(false)
   const [rescheduleTask, setRescheduleTask] = useState<Task | null>(null)
@@ -48,12 +51,14 @@ export function TasksPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">{(['ALL', 'TODAY', 'OVERDUE', 'UPCOMING', 'PENDING', 'COMPLETED'] as TaskView[]).map(v => <Button key={v} size="sm" variant={view === v ? 'default' : 'outline'} onClick={() => setView(v)}>{v.charAt(0) + v.slice(1).toLowerCase()} ({tasks?.filter(t => matchesTaskView(t, v)).length ?? 0})</Button>)}</div>
+      {focusTask && <Button variant="outline" size="sm" onClick={() => setParams({})}>Show all tasks</Button>}
+      {!focusTask && <div className="flex flex-wrap gap-2">{(['ALL', 'TODAY', 'OVERDUE', 'UPCOMING', 'PENDING', 'COMPLETED'] as TaskView[]).map(v => <Button key={v} size="sm" variant={view === v ? 'default' : 'outline'} onClick={() => setView(v)}>{v.charAt(0) + v.slice(1).toLowerCase()} ({tasks?.filter(t => matchesTaskView(t, v)).length ?? 0})</Button>)}</div>}
       {isLoading ? (
         <TableSkeleton rows={6} cols={3} />
       ) : (
         <div className="space-y-2">
-          {tasks?.filter(t => matchesTaskView(t, view)).map((task) => {
+          {focusTask && !tasks?.some(t => String(t.id) === focusTask) && <p>This task is no longer available.</p>}
+          {tasks?.filter(t => focusTask ? String(t.id) === focusTask : matchesTaskView(t, view)).map((task) => {
             const Icon = typeIcon[task.type] ?? Bell
             return (
               <Card key={task.id} className={task.status === 'COMPLETED' ? 'opacity-60' : ''}>

@@ -1,3 +1,4 @@
+import { useAuthStore } from '@/store/auth.store'
 import {
   useMutation,
   type UseMutationOptions,
@@ -39,7 +40,7 @@ import { uuidv4 } from '@/lib/uuid'
 
 // Internal marker field stamped into variables. Underscore-prefixed to avoid
 // colliding with any real payload field.
-export type VarsWithIdempotency<V> = V & { _idempotencyKey?: string }
+export type VarsWithIdempotency<V> = V & { _idempotencyKey?: string; _ownerId?: number }
 
 export interface OfflineMutationOptions<TData, TError, TVars, TContext>
   extends Omit<
@@ -66,7 +67,7 @@ export function useOfflineMutation<
   const stamp = (vars: TVars): VarsWithIdempotency<TVars> => {
     const v = vars as VarsWithIdempotency<TVars> | undefined
     if (v && v._idempotencyKey) return v
-    return { ...(vars as object), _idempotencyKey: uuidv4() } as VarsWithIdempotency<TVars>
+    return { ...(vars as object), _idempotencyKey: uuidv4(), _ownerId: useAuthStore.getState().user?.id } as VarsWithIdempotency<TVars>
   }
 
   const wrappedMutate: UseMutationResult<TData, TError, TVars, TContext>['mutate'] = (

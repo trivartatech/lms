@@ -1,3 +1,4 @@
+import { assignedRecord } from '../middleware/workspace-access'
 import { Router } from 'express'
 import { schoolsController } from '../controllers/schools.controller'
 import { authenticate } from '../middleware/auth.middleware'
@@ -7,7 +8,7 @@ import { schoolListQuerySchema } from '../validators/queries'
 
 const router = Router()
 
-router.use(authenticate)
+router.use(authenticate, assignedRecord('school'))
 router.use(idempotency)
 
 router.get('/', validate(schoolListQuerySchema, 'query'), schoolsController.getAll)

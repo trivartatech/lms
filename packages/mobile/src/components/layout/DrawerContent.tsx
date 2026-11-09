@@ -16,7 +16,10 @@ const NAV_ITEMS = [
   { label: 'Schools',        icon: School,           route: '/(app)/schools' as const },
   { label: 'Quotations',     icon: FileText,         route: '/(app)/quotations' as const },
   { label: 'Agreements',     icon: Handshake,        route: '/(app)/agreements' as const },
+  { label: 'Account workspace', icon: Users, route: '/(app)/workspace' as const },
+  { label: 'School operations', icon: School, route: '/(app)/operations' as const },
   { label: 'Tasks',          icon: CheckSquare,      route: '/(app)/tasks' as const },
+  { label: 'Sync queue', icon: Activity, route: '/(app)/sync' as const },
   { label: 'Reports',        icon: BarChart2,        route: '/(app)/reports' as const },
   { label: 'Activity Log',   icon: Activity,         route: '/(app)/activity' as const },
   { label: 'Settings',       icon: Settings,         route: '/(app)/settings' as const },
@@ -27,6 +30,8 @@ export function DrawerContent(props: DrawerContentComponentProps) {
   const router = useRouter()
   const segments = useSegments()
 
+  const limited = user?.role === 'FINANCE' || user?.role === 'SUPPORT'
+  const visible = limited ? NAV_ITEMS.filter(item => ['/(app)/workspace', '/(app)/operations', '/(app)/settings'].includes(item.route)) : NAV_ITEMS
   const currentPath = '/' + segments.join('/')
 
   function isActive(route: string) {
@@ -68,7 +73,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
 
       {/* Navigation items */}
       <View style={s.nav}>
-        {NAV_ITEMS.map(({ label, icon: Icon, route }) => {
+        {visible.map(({ label, icon: Icon, route }) => {
           const active = isActive(route)
           return (
             <Pressable
@@ -77,7 +82,7 @@ export function DrawerContent(props: DrawerContentComponentProps) {
               onPress={() => navigate(route)}
             >
               <Icon size={20} color={active ? C.primary : C.textSecondary} />
-              <Text style={[s.navLabel, active && s.navLabelActive]}>{label}</Text>
+              <Text style={[s.navLabel, active && s.navLabelActive]}>{route === '/(app)/operations' && limited ? (user?.role === 'FINANCE' ? 'Collections' : 'Assigned tickets') : label}</Text>
             </Pressable>
           )
         })}

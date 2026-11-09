@@ -1,3 +1,5 @@
+import { confirmLeadEntry } from '@/lib/lead-entry'
+import { toast } from '@/lib/toast-store'
 import { pipelineStageLabel } from '@lms/shared'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -113,7 +115,14 @@ export function LeadFormDialog({ open, onClose, onSuccess, lead }: Props) {
     if (lead) {
       await api.put(`/leads/${lead.id}`, payload)
     } else {
-      await api.post('/leads', payload)
+      try {
+        if (!await confirmLeadEntry(payload)) return
+        await api.post('/leads', payload)
+      } catch (error) {
+        const reason = (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        toast.error(reason ?? 'Could not check or save this lead. Please try again.')
+        return
+      }
     }
     reset()
     onSuccess()

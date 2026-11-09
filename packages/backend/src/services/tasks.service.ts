@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client'
 import { prisma } from '../config/prisma'
 import { AppError } from '../middleware/error.middleware'
 import { timelineService, computeDiff } from './timeline.service'
@@ -9,14 +10,14 @@ const taskInclude = {
 }
 
 export const tasksService = {
-  async getAll(params: { leadId?: number; schoolId?: number; assignedTo?: number; status?: string }) {
+  async getAll(params: { leadId?: number; schoolId?: number; assignedTo?: number; status?: string }, scope: Prisma.TaskWhereInput = {}) {
     const where: any = {}
     if (params.leadId) where.leadId = params.leadId
     if (params.schoolId) where.schoolId = params.schoolId
     if (params.assignedTo) where.assignedToId = params.assignedTo
     if (params.status) where.status = params.status
 
-    return prisma.task.findMany({ where, include: taskInclude, orderBy: { dueDate: 'asc' } })
+    return prisma.task.findMany({ where: { AND: [where, scope] }, include: taskInclude, orderBy: { dueDate: 'asc' } })
   },
 
   async getById(id: number) {

@@ -12,7 +12,7 @@ export const agreementsController = {
       const { schoolId } = req.query as any
       const result = await agreementsService.getAll({
         schoolId: schoolId ? parseInt(schoolId) : undefined,
-      })
+      }, req.user.role === 'SALES_EXECUTIVE' ? req.user.id : undefined)
       res.json(apiNumbers(result))
     } catch (err) {
       next(err)

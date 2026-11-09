@@ -15,11 +15,11 @@ export const pushService = {
     if (!Expo.isExpoPushToken(token)) {
       throw new Error('Invalid Expo push token')
     }
-    return prisma.user.update({
-      where: { id: userId },
-      data: { pushToken: token },
-      select: { id: true, pushToken: true },
-    })
+    const [user] = await prisma.$transaction([
+      prisma.user.update({ where: { id: userId }, data: { pushToken: token }, select: { id: true, pushToken: true } }),
+      prisma.portalPushDevice.deleteMany({ where: { token } }),
+    ])
+    return user
   },
 
   /**
@@ -43,6 +43,20 @@ export const pushService = {
    *
    * Returns tickets with delivery status per message.
    */
+  async sendPortalTicketReply(schoolId: number, ticketId: number) {
+    const devices = await prisma.portalPushDevice.findMany({
+      where: { access: { schoolId, expiresAt: { gt: new Date() }, contact: { schoolId } } },
+      select: { token: true },
+    })
+    return pushService.sendBatch(devices.map(({ token }) => ({
+      to: token,
+      title: 'New school support reply',
+      body: 'Open the School Portal to read the reply.',
+      sound: 'default',
+      data: { portalTicketId: ticketId },
+    })))
+  },
+
   async sendBatch(messages: ExpoPushMessage[]) {
     const valid = messages.filter((m) => {
       const to = Array.isArray(m.to) ? m.to[0] : m.to
@@ -78,11 +92,11 @@ export const pushService = {
 
     if (deadTokens.size > 0) {
       try {
-        const result = await prisma.user.updateMany({
-          where: { pushToken: { in: Array.from(deadTokens) } },
-          data: { pushToken: null },
-        })
-        console.log(`[push] cleared ${result.count} DeviceNotRegistered token(s)`)
+        const tokens = Array.from(deadTokens)
+        await prisma.$transaction([
+          prisma.user.updateMany({ where: { pushToken: { in: tokens } }, data: { pushToken: null } }),
+          prisma.portalPushDevice.deleteMany({ where: { token: { in: tokens } } }),
+        ])
       } catch (err) {
         console.error('[push] failed to clear dead tokens:', err)
       }

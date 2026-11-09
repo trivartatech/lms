@@ -34,7 +34,7 @@ const userSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
-  role: z.enum(['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE']),
+  role: z.enum(['ADMIN', 'SALES_MANAGER', 'SALES_EXECUTIVE', 'FINANCE', 'SUPPORT']),
 })
 type UserForm = z.infer<typeof userSchema>
 
@@ -137,14 +137,15 @@ function TierEditor({ addon }: { addon: Addon }) {
 export function SettingsPage() {
   const queryClient = useQueryClient()
   const currentUser = useAuthStore((s) => s.user)
+  const limited = currentUser?.role === 'FINANCE' || currentUser?.role === 'SUPPORT'
   const [showUserForm, setShowUserForm] = useState(false)
   const [showErpForm, setShowErpForm] = useState(false)
   const [showAddonForm, setShowAddonForm] = useState(false)
   const [editingErp, setEditingErp] = useState<EditingAddon>(null)
   const [editingAddon, setEditingAddon] = useState<EditingAddon>(null)
 
-  const { data: users } = useQuery<User[]>({ queryKey: ['users'], queryFn: () => api.get('/users').then((r) => r.data) })
-  const { data: allAddons } = useQuery<Addon[]>({ queryKey: ['addons'], queryFn: () => api.get('/addons').then((r) => r.data) })
+  const { data: users } = useQuery<User[]>({ queryKey: ['users'], enabled: !limited, queryFn: () => api.get('/users').then((r) => r.data) })
+  const { data: allAddons } = useQuery<Addon[]>({ queryKey: ['addons'], enabled: !limited, queryFn: () => api.get('/addons').then((r) => r.data) })
 
   const erpProducts  = allAddons?.filter((a) => a.category === 'ERP')   ?? []
   const addOnServices = allAddons?.filter((a) => a.category !== 'ERP') ?? []
@@ -252,6 +253,7 @@ export function SettingsPage() {
         <h1 className="text-2xl font-bold">Settings</h1>
       </div>
 
+      {!limited && <>
       {/* Users */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -396,6 +398,8 @@ export function SettingsPage() {
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="SALES_MANAGER">Sales Manager</SelectItem>
                   <SelectItem value="SALES_EXECUTIVE">Sales Executive</SelectItem>
+                  <SelectItem value="FINANCE">Finance</SelectItem>
+                  <SelectItem value="SUPPORT">Support</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -409,6 +413,8 @@ export function SettingsPage() {
 
       <ProductDialog open={showErpForm} onClose={() => { setShowErpForm(false); setEditingErp(null) }} form={erpForm} category="ERP" editing={editingErp} />
       <ProductDialog open={showAddonForm} onClose={() => { setShowAddonForm(false); setEditingAddon(null) }} form={addonForm} category="ADDON" editing={editingAddon} />
+
+      </>}
 
       {/* Change Password */}
       <Card>

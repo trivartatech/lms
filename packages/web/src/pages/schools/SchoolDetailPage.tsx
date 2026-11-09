@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -59,6 +60,10 @@ export function SchoolDetailPage() {
         </Button>
       </div>
 
+      <div className="flex flex-wrap gap-3 text-sm font-medium text-primary">
+        <Link className="hover:underline" to={'/operations?school=' + school.id}>School operations</Link>
+        <Link className="hover:underline" to={'/workspace?module=timeline&school=' + school.id}>School timeline</Link>
+      </div>
       <Tabs defaultValue="overview">
         <TabsList className="grid grid-cols-7 w-full max-w-3xl">
           <TabsTrigger value="overview">Overview</TabsTrigger>
